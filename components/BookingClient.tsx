@@ -122,23 +122,38 @@ export default function BookingClient({ event, seats }: any) {
         )}
 
         {!showCustomerForm && (
-          <button
-            onClick={startBooking}
-            disabled={!selected.length}
-            style={{
-              marginTop: 8,
-              width: '100%',
-              padding: '12px 14px',
-              borderRadius: 8,
-              border: 'none',
-              background: '#1d4ed8',
-              color: '#fff',
-              fontWeight: 700,
-              cursor: selected.length ? 'pointer' : 'not-allowed',
-            }}
-          >
-            Blocca e continua
-          </button>
+          <>
+            <button
+              onClick={startBooking}
+              disabled={!selected.length}
+              style={{
+                marginTop: 8,
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 8,
+                border: 'none',
+                background: '#1d4ed8',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: selected.length ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Acquista
+            </button>
+
+            <div style={{ marginTop: 16 }}>
+              <img
+                src="/locandina.jpg"
+                alt="Locandina evento"
+                style={{
+                  width: '100%',
+                  borderRadius: 12,
+                  display: 'block',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                }}
+              />
+            </div>
+          </>
         )}
 
         {showCustomerForm && (
@@ -228,10 +243,23 @@ export default function BookingClient({ event, seats }: any) {
                   lineHeight: 1.4,
                 }}
               >
-                Posti bloccati correttamente.  
+                Posti bloccati correttamente.
                 Il prossimo step sarà il pagamento.
               </div>
             )}
+
+            <div style={{ marginTop: 18 }}>
+              <img
+                src="/locandina.jpg"
+                alt="Locandina evento"
+                style={{
+                  width: '100%',
+                  borderRadius: 12,
+                  display: 'block',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                }}
+              />
+            </div>
           </div>
         )}
       </aside>
