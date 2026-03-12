@@ -3,11 +3,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import SeatMap from './SeatMap';
 
-type SeatType = 'adulto' | 'ridotto';
-
 export default function BookingClient({ event, seats }: any) {
   const [selected, setSelected] = useState<string[]>([]);
-  const [seatTypes, setSeatTypes] = useState<Record<string, SeatType>>({});
   const [loading, setLoading] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [lockCompleted, setLockCompleted] = useState(false);
@@ -30,67 +27,21 @@ export default function BookingClient({ event, seats }: any) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const total = useMemo(
+    () =>
+      seats
+        .filter((s: any) => selected.includes(s.id))
+        .reduce((sum: number, s: any) => sum + s.price_cents, 0),
+    [selected, seats]
+  );
+
   const selectedSeats = useMemo(
     () => seats.filter((s: any) => selected.includes(s.id)),
     [selected, seats]
   );
 
-  useEffect(() => {
-    setSeatTypes((prev) => {
-      const updated: Record<string, SeatType> = {};
-
-      for (const seatId of selected) {
-        updated[seatId] = prev[seatId] || 'adulto';
-      }
-
-      return updated;
-    });
-  }, [selected]);
-
-  const bookingFeePerSeatCents = 100;
-  const adultPriceCents = 1500;
-  const reducedPriceCents = 1000;
-
-  const ticketTotal = useMemo(() => {
-    return selected.reduce((sum, seatId) => {
-      const type = seatTypes[seatId] || 'adulto';
-      return sum + (type === 'adulto' ? adultPriceCents : reducedPriceCents);
-    }, 0);
-  }, [selected, seatTypes]);
-
-  const bookingFeeTotal = useMemo(() => {
-    return selected.length * bookingFeePerSeatCents;
-  }, [selected.length]);
-
-  const finalTotal = useMemo(() => {
-    return ticketTotal + bookingFeeTotal;
-  }, [ticketTotal, bookingFeeTotal]);
-
   function updateCustomer(field: string, value: string) {
     setCustomer((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function updateSeatType(seatId: string, type: SeatType) {
-    setSeatTypes((prev) => ({
-      ...prev,
-      [seatId]: type,
-    }));
-  }
-
-  function getSeatLabel(seat: any) {
-    return (
-      seat.venue_seats?.seat_label ||
-      `${seat.venue_seats?.row_label}-${seat.venue_seats?.seat_number}`
-    );
-  }
-
-  function getSeatBasePrice(seatId: string) {
-    const type = seatTypes[seatId] || 'adulto';
-    return type === 'adulto' ? adultPriceCents : reducedPriceCents;
-  }
-
-  function getSeatFinalPrice(seatId: string) {
-    return getSeatBasePrice(seatId) + bookingFeePerSeatCents;
   }
 
   function startBooking() {
@@ -98,14 +49,6 @@ export default function BookingClient({ event, seats }: any) {
       alert('Seleziona almeno un posto.');
       return;
     }
-
-    for (const seatId of selected) {
-      if (!seatTypes[seatId]) {
-        alert('Seleziona la tipologia per tutti i posti.');
-        return;
-      }
-    }
-
     setShowCustomerForm(true);
   }
 
@@ -125,13 +68,6 @@ export default function BookingClient({ event, seats }: any) {
       return;
     }
 
-    for (const seatId of selected) {
-      if (!seatTypes[seatId]) {
-        alert('Seleziona la tipologia per tutti i posti.');
-        return;
-      }
-    }
-
     const sessionToken = crypto.randomUUID();
     setLoading(true);
 
@@ -143,20 +79,6 @@ export default function BookingClient({ event, seats }: any) {
           eventId: event.id,
           eventSeatIds: selected,
           sessionToken,
-          seatDetails: selected.map((seatId) => ({
-            eventSeatId: seatId,
-            ticketType: seatTypes[seatId],
-            basePriceCents:
-              seatTypes[seatId] === 'ridotto'
-                ? reducedPriceCents
-                : adultPriceCents,
-            bookingFeeCents: bookingFeePerSeatCents,
-            finalPriceCents:
-              (seatTypes[seatId] === 'ridotto'
-                ? reducedPriceCents
-                : adultPriceCents) + bookingFeePerSeatCents,
-          })),
-          customer,
         }),
       });
 
@@ -177,7 +99,7 @@ export default function BookingClient({ event, seats }: any) {
     }
   }
 
-  const mapScale = isMobile ? 1 : 1;
+  const mapScale = isMobile ? 0.7 : 1;
 
   return (
     <div style={pageWrapperStyle}>
@@ -195,7 +117,7 @@ export default function BookingClient({ event, seats }: any) {
           <div
             style={{
               ...seatMapWrapperStyle,
-              overflowX: isMobile ? 'auto' : 'auto',
+              overflowX: isMobile ? 'hidden' : 'auto',
               overflowY: 'hidden',
             }}
           >
@@ -220,69 +142,23 @@ export default function BookingClient({ event, seats }: any) {
               <strong>Posti selezionati:</strong> {selected.length}
             </div>
 
+            <div style={{ marginBottom: 12 }}>
+              <strong>Totale:</strong> € {(total / 100).toFixed(2)}
+            </div>
+
             {selectedSeats.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <strong>Dettaglio posti:</strong>
-
-                <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
-                  {selectedSeats.map((seat: any) => {
-                    const seatId = seat.id;
-                    const seatType = seatTypes[seatId] || 'adulto';
-
-                    return (
-                      <div key={seat.id} style={seatRowCardStyle}>
-                        <div style={{ marginBottom: 8, fontWeight: 700 }}>
-                          {getSeatLabel(seat)}
-                        </div>
-
-                        <div style={radioRowStyle}>
-                          <label style={radioLabelStyle}>
-                            <input
-                              type="radio"
-                              name={`ticket-type-${seatId}`}
-                              checked={seatType === 'adulto'}
-                              onChange={() => updateSeatType(seatId, 'adulto')}
-                            />
-                            <span>Adulto (€15 + €1 prevendita)</span>
-                          </label>
-
-                          <label style={radioLabelStyle}>
-                            <input
-                              type="radio"
-                              name={`ticket-type-${seatId}`}
-                              checked={seatType === 'ridotto'}
-                              onChange={() => updateSeatType(seatId, 'ridotto')}
-                            />
-                            <span>Ridotto under 13 (€10 + €1 prevendita)</span>
-                          </label>
-                        </div>
-
-                        <div style={{ marginTop: 8, fontSize: 14, color: '#333' }}>
-                          Totale posto: <strong>€ {(getSeatFinalPrice(seatId) / 100).toFixed(2)}</strong>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <strong>Posti scelti:</strong>
+                <ul style={selectedListStyle}>
+                  {selectedSeats.map((seat: any) => (
+                    <li key={seat.id} style={{ marginBottom: 4 }}>
+                      {seat.venue_seats?.seat_label ||
+                        `${seat.venue_seats?.row_label}-${seat.venue_seats?.seat_number}`}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-
-            <div style={{ marginBottom: 8 }}>
-              <strong>Biglietti:</strong> € {(ticketTotal / 100).toFixed(2)}
-            </div>
-
-            <div style={{ marginBottom: 8 }}>
-              <strong>Prevendita:</strong> € {(bookingFeeTotal / 100).toFixed(2)}
-              {selected.length > 0 && (
-                <span style={{ color: '#666', fontSize: 13 }}>
-                  {' '}({selected.length} x € {(bookingFeePerSeatCents / 100).toFixed(2)})
-                </span>
-              )}
-            </div>
-
-            <div style={{ marginBottom: 14, fontSize: 18 }}>
-              <strong>Totale finale:</strong> € {(finalTotal / 100).toFixed(2)}
-            </div>
 
             {!showCustomerForm && (
               <button
@@ -441,23 +317,10 @@ const summaryTitleStyle: CSSProperties = {
   marginBottom: 14,
 };
 
-const seatRowCardStyle: CSSProperties = {
-  border: '1px solid #d8d8d8',
-  borderRadius: 12,
-  padding: 12,
-  background: '#fff',
-};
-
-const radioRowStyle: CSSProperties = {
-  display: 'grid',
-  gap: 8,
-};
-
-const radioLabelStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  fontSize: 14,
+const selectedListStyle: CSSProperties = {
+  marginTop: 8,
+  paddingLeft: 18,
+  marginBottom: 0,
 };
 
 const primaryButtonStyle: CSSProperties = {
