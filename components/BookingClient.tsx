@@ -103,17 +103,17 @@ export default function BookingClient({ event, seats }: any) {
 
   return (
     <div style={pageWrapperStyle}>
+      <h1 style={titleStyle}>{event.title}</h1>
+
       <div
         style={{
           ...layoutStyle,
           gridTemplateColumns: isMobile
             ? '1fr'
-            : 'minmax(0, 7fr) minmax(320px, 3fr)',
+            : 'minmax(0, 3.6fr) minmax(320px, 1fr)',
         }}
       >
-        <div style={mainColumnStyle}>
-          <h1 style={titleStyle}>{event.title}</h1>
-
+        <section style={mainCardStyle}>
           <div style={seatMapWrapperStyle}>
             <div
               style={{
@@ -125,136 +125,128 @@ export default function BookingClient({ event, seats }: any) {
               <SeatMap seats={seats} selected={selected} onToggle={setSelected} />
             </div>
           </div>
-        </div>
+        </section>
 
-        <aside style={asideStyle}>
-          <h3 style={{ marginTop: 0, marginBottom: 14 }}>Riepilogo</h3>
+        <aside style={sideCardStyle}>
+          <div>
+            <h3 style={summaryTitleStyle}>Riepilogo</h3>
 
-          <div style={{ marginBottom: 8 }}>
-            <strong>Posti selezionati:</strong> {selected.length}
-          </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <strong>Totale:</strong> € {(total / 100).toFixed(2)}
-          </div>
-
-          {selectedSeats.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <strong>Posti scelti:</strong>
-              <ul style={selectedListStyle}>
-                {selectedSeats.map((seat: any) => (
-                  <li key={seat.id} style={{ marginBottom: 4 }}>
-                    {seat.venue_seats?.seat_label ||
-                      `${seat.venue_seats?.row_label}-${seat.venue_seats?.seat_number}`}
-                  </li>
-                ))}
-              </ul>
+            <div style={{ marginBottom: 8 }}>
+              <strong>Posti selezionati:</strong> {selected.length}
             </div>
-          )}
 
-          {!showCustomerForm && (
-            <>
+            <div style={{ marginBottom: 12 }}>
+              <strong>Totale:</strong> € {(total / 100).toFixed(2)}
+            </div>
+
+            {selectedSeats.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <strong>Posti scelti:</strong>
+                <ul style={selectedListStyle}>
+                  {selectedSeats.map((seat: any) => (
+                    <li key={seat.id} style={{ marginBottom: 4 }}>
+                      {seat.venue_seats?.seat_label ||
+                        `${seat.venue_seats?.row_label}-${seat.venue_seats?.seat_number}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {!showCustomerForm && (
               <button
                 onClick={startBooking}
                 disabled={!selected.length}
                 style={{
                   ...primaryButtonStyle,
                   cursor: selected.length ? 'pointer' : 'not-allowed',
-                  opacity: selected.length ? 1 : 0.7,
+                  opacity: selected.length ? 1 : 0.72,
                 }}
               >
                 Acquista
               </button>
+            )}
 
-              <div style={{ marginTop: 16 }}>
-                <img
-                  src="/locandina.jpg"
-                  alt="Locandina evento"
-                  style={posterStyle}
-                />
-              </div>
-            </>
-          )}
+            {showCustomerForm && (
+              <div style={{ marginTop: 20 }}>
+                <h4 style={{ marginBottom: 12 }}>Dati intestatario ordine</h4>
 
-          {showCustomerForm && (
-            <div style={{ marginTop: 20 }}>
-              <h4 style={{ marginBottom: 12 }}>Dati intestatario ordine</h4>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <input
+                    type="text"
+                    placeholder="Nome *"
+                    value={customer.firstName}
+                    onChange={(e) => updateCustomer('firstName', e.target.value)}
+                    style={inputStyle}
+                  />
 
-              <div style={{ display: 'grid', gap: 10 }}>
-                <input
-                  type="text"
-                  placeholder="Nome *"
-                  value={customer.firstName}
-                  onChange={(e) => updateCustomer('firstName', e.target.value)}
-                  style={inputStyle}
-                />
+                  <input
+                    type="text"
+                    placeholder="Cognome *"
+                    value={customer.lastName}
+                    onChange={(e) => updateCustomer('lastName', e.target.value)}
+                    style={inputStyle}
+                  />
 
-                <input
-                  type="text"
-                  placeholder="Cognome *"
-                  value={customer.lastName}
-                  onChange={(e) => updateCustomer('lastName', e.target.value)}
-                  style={inputStyle}
-                />
+                  <input
+                    type="email"
+                    placeholder="Email *"
+                    value={customer.email}
+                    onChange={(e) => updateCustomer('email', e.target.value)}
+                    style={inputStyle}
+                  />
 
-                <input
-                  type="email"
-                  placeholder="Email *"
-                  value={customer.email}
-                  onChange={(e) => updateCustomer('email', e.target.value)}
-                  style={inputStyle}
-                />
-
-                <input
-                  type="text"
-                  placeholder="Telefono (facoltativo)"
-                  value={customer.phone}
-                  onChange={(e) => updateCustomer('phone', e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-
-              <button
-                onClick={confirmCustomerAndLockSeats}
-                disabled={loading}
-                style={{
-                  ...confirmButtonStyle,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.8 : 1,
-                }}
-              >
-                {loading ? 'Attendere...' : 'Conferma dati e blocca posti'}
-              </button>
-
-              <button
-                onClick={() => setShowCustomerForm(false)}
-                disabled={loading}
-                style={{
-                  ...secondaryButtonStyle,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.8 : 1,
-                }}
-              >
-                Torna indietro
-              </button>
-
-              {lockCompleted && (
-                <div style={successBoxStyle}>
-                  Posti bloccati correttamente.
-                  <br />
-                  Il prossimo step sarà il pagamento.
+                  <input
+                    type="text"
+                    placeholder="Telefono (facoltativo)"
+                    value={customer.phone}
+                    onChange={(e) => updateCustomer('phone', e.target.value)}
+                    style={inputStyle}
+                  />
                 </div>
-              )}
 
-              <div style={{ marginTop: 18 }}>
-                <img
-                  src="/locandina.jpg"
-                  alt="Locandina evento"
-                  style={posterStyle}
-                />
+                <button
+                  onClick={confirmCustomerAndLockSeats}
+                  disabled={loading}
+                  style={{
+                    ...confirmButtonStyle,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.8 : 1,
+                  }}
+                >
+                  {loading ? 'Attendere...' : 'Conferma dati e blocca posti'}
+                </button>
+
+                <button
+                  onClick={() => setShowCustomerForm(false)}
+                  disabled={loading}
+                  style={{
+                    ...secondaryButtonStyle,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.8 : 1,
+                  }}
+                >
+                  Torna indietro
+                </button>
+
+                {lockCompleted && (
+                  <div style={successBoxStyle}>
+                    Posti bloccati correttamente.
+                    <br />
+                    Il prossimo step sarà il pagamento.
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <div style={posterWrapperStyle}>
+            <img
+              src="/locandina.jpg"
+              alt="Locandina evento"
+              style={posterStyle}
+            />
+          </div>
         </aside>
       </div>
     </div>
@@ -263,47 +255,58 @@ export default function BookingClient({ event, seats }: any) {
 
 const pageWrapperStyle: CSSProperties = {
   width: '100%',
-  padding: '16px',
+  padding: '16px 12px',
   boxSizing: 'border-box',
+};
+
+const titleStyle: CSSProperties = {
+  margin: '0 0 16px 0',
+  lineHeight: 1.15,
+  wordBreak: 'break-word',
 };
 
 const layoutStyle: CSSProperties = {
   display: 'grid',
-  gap: 24,
+  gap: 18,
   alignItems: 'start',
   width: '100%',
 };
 
-const mainColumnStyle: CSSProperties = {
-  minWidth: 0,
+const sharedCardStyle: CSSProperties = {
+  background: '#f3f3f3',
+  border: '1px solid #d8d8d8',
+  borderRadius: 18,
+  boxSizing: 'border-box',
 };
 
-const titleStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 16,
-  lineHeight: 1.2,
-  wordBreak: 'break-word',
+const mainCardStyle: CSSProperties = {
+  ...sharedCardStyle,
+  padding: 16,
+  minWidth: 0,
+  overflow: 'hidden',
+};
+
+const sideCardStyle: CSSProperties = {
+  ...sharedCardStyle,
+  padding: 16,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 18,
 };
 
 const seatMapWrapperStyle: CSSProperties = {
   width: '100%',
   overflowX: 'auto',
+  overflowY: 'hidden',
   WebkitOverflowScrolling: 'touch',
-  background: '#f3f3f3',
-  border: '1px solid #ddd',
-  borderRadius: 16,
-  padding: '20px',
   boxSizing: 'border-box',
 };
 
-const asideStyle: CSSProperties = {
-  border: '1px solid #ddd',
-  borderRadius: 12,
-  padding: 16,
-  height: 'fit-content',
-  background: '#fff',
-  width: '100%',
-  boxSizing: 'border-box',
+const summaryTitleStyle: CSSProperties = {
+  marginTop: 0,
+  marginBottom: 14,
 };
 
 const selectedListStyle: CSSProperties = {
@@ -316,9 +319,9 @@ const primaryButtonStyle: CSSProperties = {
   marginTop: 8,
   width: '100%',
   padding: '12px 14px',
-  borderRadius: 8,
+  borderRadius: 10,
   border: 'none',
-  background: '#1d4ed8',
+  background: '#5f7eea',
   color: '#fff',
   fontWeight: 700,
   fontSize: 16,
@@ -328,7 +331,7 @@ const confirmButtonStyle: CSSProperties = {
   marginTop: 16,
   width: '100%',
   padding: '12px 14px',
-  borderRadius: 8,
+  borderRadius: 10,
   border: 'none',
   background: '#15803d',
   color: '#fff',
@@ -340,8 +343,8 @@ const secondaryButtonStyle: CSSProperties = {
   marginTop: 10,
   width: '100%',
   padding: '10px 14px',
-  borderRadius: 8,
-  border: '1px solid #ccc',
+  borderRadius: 10,
+  border: '1px solid #cfcfcf',
   background: '#fff',
   color: '#333',
   fontWeight: 600,
@@ -351,7 +354,7 @@ const secondaryButtonStyle: CSSProperties = {
 const successBoxStyle: CSSProperties = {
   marginTop: 16,
   padding: 12,
-  borderRadius: 8,
+  borderRadius: 10,
   background: '#ecfdf5',
   border: '1px solid #86efac',
   color: '#166534',
@@ -359,18 +362,25 @@ const successBoxStyle: CSSProperties = {
   lineHeight: 1.4,
 };
 
+const posterWrapperStyle: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  alignItems: 'flex-end',
+};
+
 const posterStyle: CSSProperties = {
   width: '100%',
   height: 'auto',
   display: 'block',
-  borderRadius: 12,
+  borderRadius: 14,
   objectFit: 'cover',
+  border: '1px solid #d8d8d8',
 };
 
 const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 12px',
-  borderRadius: 8,
+  borderRadius: 10,
   border: '1px solid #ccc',
   fontSize: 14,
   boxSizing: 'border-box',
