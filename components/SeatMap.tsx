@@ -1,6 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 export default function SeatMap({ seats, selected, onToggle }: any) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   function toggle(id: string, status: string) {
     if (status !== 'available') return;
     onToggle((prev: string[]) =>
@@ -133,151 +148,175 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
     };
   }
 
+  const scale = isMobile ? 0.75 : 1;
+  const svgWidth = 1200;
+  const svgHeight = 1350;
+
   return (
     <div
       style={{
         border: '1px solid #d9d9d9',
         borderRadius: 16,
-        padding: 24,
-        overflow: 'auto',
+        padding: isMobile ? 12 : 24,
+        overflowX: 'auto',
+        overflowY: 'hidden',
         backgroundColor: '#f7f7f7',
       }}
     >
-      <svg
-        width="1200"
-        height="1350"
-        viewBox="0 0 1200 1350"
-        style={{ display: 'block', margin: '0 auto' }}
+      <div
+        style={{
+          width: `${svgWidth * scale}px`,
+          minWidth: `${svgWidth * scale}px`,
+          height: `${svgHeight * scale}px`,
+          margin: '0 auto',
+          position: 'relative',
+        }}
       >
-        {/* PALCO */}
-        <g>
-          <path
-            d="M 340 20 L 860 20 L 860 75 L 878 98 L 878 115 L 858 92 L 342 92 L 322 115 L 322 98 L 340 75 Z"
-            fill="#c9252d"
-          />
-          <text
-            x="600"
-            y="58"
-            fontSize="28"
-            fontWeight="800"
-            textAnchor="middle"
-            fill="#ffffff"
-            style={{ letterSpacing: '1px', fontFamily: 'Arial, Helvetica, sans-serif' }}
+        <div
+          style={{
+            width: `${svgWidth}px`,
+            height: `${svgHeight}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          <svg
+            width="1200"
+            height="1350"
+            viewBox="0 0 1200 1350"
+            style={{ display: 'block' }}
           >
-            PALCOSCENICO
-          </text>
-        </g>
-
-        {/* TITOLI */}
-        <text
-          x="600"
-          y="150"
-          fontSize="22"
-          fontWeight="800"
-          textAnchor="middle"
-          fill="#444"
-          style={{
-            letterSpacing: '1px',
-            textDecoration: 'underline',
-            fontFamily: 'Arial, Helvetica, sans-serif',
-          }}
-        >
-          PLATEA
-        </text>
-
-        <text
-          x="600"
-          y="445"
-          fontSize="18"
-          fontWeight="800"
-          textAnchor="middle"
-          fill="#7a7a7a"
-          style={{
-            letterSpacing: '2px',
-            fontFamily: 'Arial, Helvetica, sans-serif',
-          }}
-        >
-          1° CORRIDOIO
-        </text>
-
-        <text
-          x="600"
-          y="835"
-          fontSize="18"
-          fontWeight="800"
-          textAnchor="middle"
-          fill="#7a7a7a"
-          style={{
-            letterSpacing: '2px',
-            fontFamily: 'Arial, Helvetica, sans-serif',
-          }}
-        >
-          2° CORRIDOIO
-        </text>
-
-        <text
-          x="600"
-          y="1035"
-          fontSize="22"
-          fontWeight="800"
-          textAnchor="middle"
-          fill="#444"
-          style={{
-            letterSpacing: '1px',
-            textDecoration: 'underline',
-            fontFamily: 'Arial, Helvetica, sans-serif',
-          }}
-        >
-          GALLERIA
-        </text>
-
-        {/* POSTI */}
-        {seats.map((seat: any) => {
-          const meta = seat.venue_seats;
-          const visual = getVisualSeat(seat);
-
-          if (!visual) return null;
-
-          const isSelected = selected.includes(seat.id);
-          const fill = getSeatFill(seat, isSelected);
-
-          return (
-            <g
-              key={seat.id}
-              onClick={() => toggle(seat.id, seat.status)}
-              style={{
-                cursor: seat.status === 'available' ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s ease-in-out',
-              }}
-            >
-              <circle
-                cx={visual.x}
-                cy={visual.y}
-                r={visual.r}
-                fill={fill}
-                stroke="#ffffff"
-                strokeWidth="2"
+            {/* PALCO */}
+            <g>
+              <path
+                d="M 340 20 L 860 20 L 860 75 L 878 98 L 878 115 L 858 92 L 342 92 L 322 115 L 322 98 L 340 75 Z"
+                fill="#c9252d"
               />
               <text
-                x={visual.x}
-                y={visual.y}
-                fontSize="11"
-                fontWeight="700"
-                fill="#ffffff"
+                x="600"
+                y="58"
+                fontSize="28"
+                fontWeight="800"
                 textAnchor="middle"
-                dominantBaseline="middle"
-                pointerEvents="none"
-                style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                fill="#ffffff"
+                style={{ letterSpacing: '1px', fontFamily: 'Arial, Helvetica, sans-serif' }}
               >
-                {meta.seat_number}
+                PALCOSCENICO
               </text>
-              <title>
-                {meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
-              </title>
             </g>
-          );
-        })}
-      </svg>
+
+            {/* TITOLI */}
+            <text
+              x="600"
+              y="150"
+              fontSize="22"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#444"
+              style={{
+                letterSpacing: '1px',
+                textDecoration: 'underline',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              PLATEA
+            </text>
+
+            <text
+              x="600"
+              y="445"
+              fontSize="18"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#7a7a7a"
+              style={{
+                letterSpacing: '2px',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              1° CORRIDOIO
+            </text>
+
+            <text
+              x="600"
+              y="835"
+              fontSize="18"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#7a7a7a"
+              style={{
+                letterSpacing: '2px',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              2° CORRIDOIO
+            </text>
+
+            <text
+              x="600"
+              y="1035"
+              fontSize="22"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#444"
+              style={{
+                letterSpacing: '1px',
+                textDecoration: 'underline',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              GALLERIA
+            </text>
+
+            {/* POSTI */}
+            {seats.map((seat: any) => {
+              const meta = seat.venue_seats;
+              const visual = getVisualSeat(seat);
+
+              if (!visual) return null;
+
+              const isSelected = selected.includes(seat.id);
+              const fill = getSeatFill(seat, isSelected);
+
+              return (
+                <g
+                  key={seat.id}
+                  onClick={() => toggle(seat.id, seat.status)}
+                  style={{
+                    cursor: seat.status === 'available' ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s ease-in-out',
+                  }}
+                >
+                  <circle
+                    cx={visual.x}
+                    cy={visual.y}
+                    r={visual.r}
+                    fill={fill}
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                  />
+                  <text
+                    x={visual.x}
+                    y={visual.y}
+                    fontSize="11"
+                    fontWeight="700"
+                    fill="#ffffff"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    pointerEvents="none"
+                    style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                  >
+                    {meta.seat_number}
+                  </text>
+                  <title>
+                    {meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
+                  </title>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
     </div>
   );
 }
