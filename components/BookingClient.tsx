@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import SeatMap from './SeatMap';
 
 export default function BookingClient({ event, seats }: any) {
@@ -8,6 +8,7 @@ export default function BookingClient({ event, seats }: any) {
   const [loading, setLoading] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [lockCompleted, setLockCompleted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [customer, setCustomer] = useState({
     firstName: '',
@@ -15,6 +16,16 @@ export default function BookingClient({ event, seats }: any) {
     email: '',
     phone: '',
   });
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth <= 768);
+    }
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const total = useMemo(
     () =>
@@ -64,13 +75,19 @@ export default function BookingClient({ event, seats }: any) {
       const lockRes = await fetch('/api/lock-seats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: event.id, eventSeatIds: selected, sessionToken }),
+        body: JSON.stringify({
+          eventId: event.id,
+          eventSeatIds: selected,
+          sessionToken,
+        }),
       });
 
       const lockJson = await lockRes.json();
 
       if (!lockJson.ok) {
-        throw new Error(lockJson.result?.message || lockJson.error || 'Errore nel blocco posti');
+        throw new Error(
+          lockJson.result?.message || lockJson.error || 'Errore nel blocco posti'
+        );
       }
 
       setLockCompleted(true);
@@ -82,14 +99,31 @@ export default function BookingClient({ event, seats }: any) {
     }
   }
 
+  const mapScale = isMobile ? 0.7 : 1;
+
   return (
     <div style={pageWrapperStyle}>
-      <div style={layoutStyle}>
+      <div
+        style={{
+          ...layoutStyle,
+          gridTemplateColumns: isMobile
+            ? '1fr'
+            : 'minmax(0, 7fr) minmax(320px, 3fr)',
+        }}
+      >
         <div style={mainColumnStyle}>
           <h1 style={titleStyle}>{event.title}</h1>
 
           <div style={seatMapWrapperStyle}>
-            <SeatMap seats={seats} selected={selected} onToggle={setSelected} />
+            <div
+              style={{
+                transform: `scale(${mapScale})`,
+                transformOrigin: 'top left',
+                width: isMobile ? `${100 / mapScale}%` : '100%',
+              }}
+            >
+              <SeatMap seats={seats} selected={selected} onToggle={setSelected} />
+            </div>
           </div>
         </div>
 
@@ -110,7 +144,8 @@ export default function BookingClient({ event, seats }: any) {
               <ul style={selectedListStyle}>
                 {selectedSeats.map((seat: any) => (
                   <li key={seat.id} style={{ marginBottom: 4 }}>
-                    {seat.venue_seats?.seat_label || `${seat.venue_seats?.row_label}-${seat.venue_seats?.seat_number}`}
+                    {seat.venue_seats?.seat_label ||
+                      `${seat.venue_seats?.row_label}-${seat.venue_seats?.seat_number}`}
                   </li>
                 ))}
               </ul>
@@ -226,40 +261,42 @@ export default function BookingClient({ event, seats }: any) {
   );
 }
 
-const pageWrapperStyle: React.CSSProperties = {
+const pageWrapperStyle: CSSProperties = {
   width: '100%',
   padding: '16px',
   boxSizing: 'border-box',
 };
 
-const layoutStyle: React.CSSProperties = {
+const layoutStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
   gap: 24,
   alignItems: 'start',
   width: '100%',
 };
 
-const mainColumnStyle: React.CSSProperties = {
+const mainColumnStyle: CSSProperties = {
   minWidth: 0,
 };
 
-const titleStyle: React.CSSProperties = {
+const titleStyle: CSSProperties = {
   marginTop: 0,
   marginBottom: 16,
   lineHeight: 1.2,
   wordBreak: 'break-word',
 };
 
-const seatMapWrapperStyle: React.CSSProperties = {
+const seatMapWrapperStyle: CSSProperties = {
   width: '100%',
   overflowX: 'auto',
   WebkitOverflowScrolling: 'touch',
-  background: '#fff',
-  borderRadius: 12,
+  background: '#f3f3f3',
+  border: '1px solid #ddd',
+  borderRadius: 16,
+  padding: '20px',
+  boxSizing: 'border-box',
 };
 
-const asideStyle: React.CSSProperties = {
+const asideStyle: CSSProperties = {
   border: '1px solid #ddd',
   borderRadius: 12,
   padding: 16,
@@ -269,24 +306,13 @@ const asideStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
-const selectedListStyle: React.CSSProperties = {
+const selectedListStyle: CSSProperties = {
   marginTop: 8,
-  marginBottom: 0,
   paddingLeft: 18,
-  lineHeight: 1.5,
-  wordBreak: 'break-word',
+  marginBottom: 0,
 };
 
-const posterStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: '100%',
-  height: 'auto',
-  borderRadius: 12,
-  display: 'block',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-};
-
-const primaryButtonStyle: React.CSSProperties = {
+const primaryButtonStyle: CSSProperties = {
   marginTop: 8,
   width: '100%',
   padding: '12px 14px',
@@ -298,7 +324,7 @@ const primaryButtonStyle: React.CSSProperties = {
   fontSize: 16,
 };
 
-const confirmButtonStyle: React.CSSProperties = {
+const confirmButtonStyle: CSSProperties = {
   marginTop: 16,
   width: '100%',
   padding: '12px 14px',
@@ -307,10 +333,10 @@ const confirmButtonStyle: React.CSSProperties = {
   background: '#15803d',
   color: '#fff',
   fontWeight: 700,
-  fontSize: 15,
+  fontSize: 16,
 };
 
-const secondaryButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: CSSProperties = {
   marginTop: 10,
   width: '100%',
   padding: '10px 14px',
@@ -322,7 +348,7 @@ const secondaryButtonStyle: React.CSSProperties = {
   fontSize: 15,
 };
 
-const successBoxStyle: React.CSSProperties = {
+const successBoxStyle: CSSProperties = {
   marginTop: 16,
   padding: 12,
   borderRadius: 8,
@@ -330,10 +356,18 @@ const successBoxStyle: React.CSSProperties = {
   border: '1px solid #86efac',
   color: '#166534',
   fontSize: 14,
-  lineHeight: 1.5,
+  lineHeight: 1.4,
 };
 
-const inputStyle: React.CSSProperties = {
+const posterStyle: CSSProperties = {
+  width: '100%',
+  height: 'auto',
+  display: 'block',
+  borderRadius: 12,
+  objectFit: 'cover',
+};
+
+const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: 8,
