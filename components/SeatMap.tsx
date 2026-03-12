@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function SeatMap({ seats, selected, onToggle }: any) {
   const [isMobile, setIsMobile] = useState(false);
@@ -18,136 +18,304 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
 
   function toggle(id: string, status: string) {
     if (status !== 'available') return;
-
     onToggle((prev: string[]) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
 
-  const seatBounds = useMemo(() => {
-    if (!seats || !seats.length) {
-      return {
-        minX: 0,
-        minY: 0,
-        maxX: 1100,
-        maxY: 700,
-      };
+  function getSeatFill(seat: any, isSelected: boolean) {
+    if (seat.status === 'sold') return '#d9534f';
+    if (seat.status === 'locked') return '#f0ad4e';
+    if (isSelected) return '#0275d8';
+    return '#5cb85c';
+  }
+
+  // --- LOGICA PLATEA ---
+  function getGridColumn(r: number, s: number) {
+    if (r >= 1 && r <= 6) {
+      if (s >= 1 && s <= 16) return s + 3;
+    }
+    if (r >= 7 && r <= 10) {
+      if (s >= 1 && s <= 9) return s + 1;
+      if (s >= 10 && s <= 18) {
+        if (r <= 8 && s > 16) return null;
+        return s + 3;
+      }
+    }
+    if (r >= 11 && r <= 14) {
+      if (s >= 1 && s <= 10) return s;
+      if (s >= 11 && s <= 20) return s + 2;
+    }
+    if (r === 15) {
+      if (s >= 1 && s <= 8) return s + 2;
+      if (s >= 9 && s <= 18) return s + 4;
+    }
+    if (r === 16 || r === 17) {
+      if (s >= 1 && s <= 4) return s + 2;
+      if (s >= 5 && s <= 6) return s + 4;
+      if (s >= 7 && s <= 8) return s + 6;
+      if (s >= 9 && s <= 14) return s + 8;
+    }
+    return null;
+  }
+
+  function getPlateaSeatPosition(rowLabel: string, seatNumber: number) {
+    const rowNumber = Number(rowLabel);
+    if (isNaN(rowNumber) || rowNumber < 1 || rowNumber > 17) return null;
+
+    const colIndex = getGridColumn(rowNumber, seatNumber);
+    if (!colIndex) return null;
+
+    const centerX = 600;
+    const startY = 170;
+    const rowGap = 42;
+    const seatGap = 36;
+    const radius = 14;
+
+    let y = startY + (rowNumber - 1) * rowGap;
+    if (rowNumber >= 7) y += 55; // 1° Corridoio
+    if (rowNumber >= 15) y += 55; // 2° Corridoio
+
+    const x = centerX + (colIndex - 11.5) * seatGap;
+
+    return { x, y, r: radius };
+  }
+
+  // --- LOGICA GALLERIA ---
+  function getGalleriaGridColumn(r: string, s: number) {
+    const row = r.toUpperCase();
+
+    if (row === 'A' || row === 'B' || row === '1' || row === '2') {
+      if (s >= 1 && s <= 16) return s + 3;
     }
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    if (row === 'C' || row === 'D' || row === '3' || row === '4') {
+      if (s >= 1 && s <= 4) return s + 2;
+      if (s >= 5 && s <= 10) return s + 4;
+      if (s >= 11 && s <= 14) return s + 6;
+    }
 
-    seats.forEach((seat: any) => {
-      const meta = seat.venue_seats || {};
-      const x = Number(meta.x_coord || 0);
-      const y = Number(meta.y_coord || 0);
-      const r = Number(meta.seat_radius || 10);
+    return null;
+  }
 
-      minX = Math.min(minX, x - r);
-      minY = Math.min(minY, y - r);
-      maxX = Math.max(maxX, x + r);
-      maxY = Math.max(maxY, y + r);
-    });
+  function getGalleriaSeatPosition(rowLabel: string, seatNumber: number, meta: any) {
+    const row = String(rowLabel).toUpperCase();
+    let rowIndex = -1;
 
-    const paddingX = 40;
-    const paddingTop = 70;
+    if (row === 'A' || row === '1') rowIndex = 0;
+    else if (row === 'B' || row === '2') rowIndex = 1;
+    else if (row === 'C' || row === '3') rowIndex = 2;
+    else if (row === 'D' || row === '4') rowIndex = 3;
 
-    // Ridotto quasi al minimo per eliminare lo spazio vuoto sotto SOLO nella mappa
-    const paddingBottom = isMobile ? 6 : 25;
+    const colIndex = getGalleriaGridColumn(row, seatNumber);
+
+    if (rowIndex !== -1 && colIndex) {
+      const centerX = 600;
+      const seatGap = 36;
+      const rowGap = 42;
+      const startY = 1080;
+
+      const x = centerX + (colIndex - 11.5) * seatGap;
+      const y = startY + rowIndex * rowGap;
+
+      return { x, y, r: 13 };
+    }
+
+    const x = Number(meta.x_coord || 0);
+    const y = Number(meta.y_coord || 0);
+    return { x: x + 40, y: y + 800, r: 13 };
+  }
+
+  // --- CONTROLLER PRINCIPALE ---
+  function getVisualSeat(seat: any) {
+    const meta = seat.venue_seats;
+    const section = String(meta.section_code || '').toUpperCase();
+    const rowLabel = String(meta.row_label || '');
+    const seatNumber = Number(meta.seat_number || 0);
+
+    if (section === 'PLATEA') {
+      return getPlateaSeatPosition(rowLabel, seatNumber);
+    }
+
+    if (section === 'GALLERIA') {
+      return getGalleriaSeatPosition(rowLabel, seatNumber, meta);
+    }
 
     return {
-      minX: Math.max(0, minX - paddingX),
-      minY: Math.max(0, minY - paddingTop),
-      maxX: maxX + paddingX,
-      maxY: maxY + paddingBottom,
+      x: Number(meta.x_coord || 0),
+      y: Number(meta.y_coord || 0),
+      r: Number(meta.seat_radius || 12),
     };
-  }, [seats, isMobile]);
+  }
 
-  const viewBoxX = seatBounds.minX;
-  const viewBoxY = seatBounds.minY;
-  const viewBoxWidth = Math.max(100, seatBounds.maxX - seatBounds.minX);
-  const viewBoxHeight = Math.max(100, seatBounds.maxY - seatBounds.minY);
-
-  // Manteniamo la dimensione mobile leggibile, senza toccare il desktop
-  const mobileScale = 0.7;
-  const visualScale = isMobile ? mobileScale : 1;
-
-  const mobileRenderedHeight = viewBoxHeight * visualScale;
-  const mobileExtraCrop = 6;
+  const scale = isMobile ? 0.75 : 1;
+  const svgWidth = 1200;
+  const svgHeight = 1350;
 
   return (
     <div
       style={{
-        border: '1px solid #ddd',
-        borderRadius: 12,
-        padding: isMobile ? 10 : 16,
+        border: '1px solid #d9d9d9',
+        borderRadius: 16,
+        padding: isMobile ? 12 : 24,
         overflowX: 'auto',
         overflowY: 'hidden',
-        background: '#f7f7f7',
+        backgroundColor: '#f7f7f7',
       }}
     >
       <div
         style={{
-          width: isMobile ? `${100 / visualScale}%` : '100%',
-          height: isMobile ? `${Math.max(0, mobileRenderedHeight - mobileExtraCrop)}px` : 'auto',
-          transform: isMobile ? `scale(${visualScale})` : 'none',
-          transformOrigin: 'top left',
+          width: `${svgWidth * scale}px`,
+          minWidth: `${svgWidth * scale}px`,
+          height: `${svgHeight * scale}px`,
+          margin: '0 auto',
+          position: 'relative',
         }}
       >
-        <svg
-          width="100%"
-          viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
+        <div
           style={{
-            display: 'block',
-            height: 'auto',
+            width: `${svgWidth}px`,
+            height: `${svgHeight}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
           }}
-          preserveAspectRatio="xMidYMin meet"
         >
-          <text
-            x={viewBoxX + viewBoxWidth / 2}
-            y={viewBoxY + 28}
-            fontSize="24"
-            fontWeight="700"
-            textAnchor="middle"
+          <svg
+            width="1200"
+            height="1350"
+            viewBox="0 0 1200 1350"
+            style={{ display: 'block' }}
           >
-            PALCO
-          </text>
-
-          {seats.map((seat: any) => {
-            const meta = seat.venue_seats || {};
-            const isSelected = selected.includes(seat.id);
-
-            const fill =
-              seat.status === 'sold'
-                ? '#d9534f'
-                : seat.status === 'locked'
-                ? '#f0ad4e'
-                : isSelected
-                ? '#0275d8'
-                : '#5cb85c';
-
-            const x = Number(meta.x_coord || 0);
-            const y = Number(meta.y_coord || 0);
-            const r = Number(meta.seat_radius || 10);
-
-            return (
-              <g
-                key={seat.id}
-                onClick={() => toggle(seat.id, seat.status)}
-                style={{
-                  cursor: seat.status === 'available' ? 'pointer' : 'not-allowed',
-                }}
+            {/* PALCO */}
+            <g>
+              <path
+                d="M 340 20 L 860 20 L 860 75 L 878 98 L 878 115 L 858 92 L 342 92 L 322 115 L 322 98 L 340 75 Z"
+                fill="#c9252d"
+              />
+              <text
+                x="600"
+                y="58"
+                fontSize="28"
+                fontWeight="800"
+                textAnchor="middle"
+                fill="#ffffff"
+                style={{ letterSpacing: '1px', fontFamily: 'Arial, Helvetica, sans-serif' }}
               >
-                <circle cx={x} cy={y} r={r} fill={fill} />
-                <title>
-                  {meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
-                </title>
-              </g>
-            );
-          })}
-        </svg>
+                PALCOSCENICO
+              </text>
+            </g>
+
+            {/* TITOLI */}
+            <text
+              x="600"
+              y="150"
+              fontSize="22"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#444"
+              style={{
+                letterSpacing: '1px',
+                textDecoration: 'underline',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              PLATEA
+            </text>
+
+            <text
+              x="600"
+              y="445"
+              fontSize="18"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#7a7a7a"
+              style={{
+                letterSpacing: '2px',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              1° CORRIDOIO
+            </text>
+
+            <text
+              x="600"
+              y="835"
+              fontSize="18"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#7a7a7a"
+              style={{
+                letterSpacing: '2px',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              2° CORRIDOIO
+            </text>
+
+            <text
+              x="600"
+              y="1035"
+              fontSize="22"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#444"
+              style={{
+                letterSpacing: '1px',
+                textDecoration: 'underline',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              GALLERIA
+            </text>
+
+            {/* POSTI */}
+            {seats.map((seat: any) => {
+              const meta = seat.venue_seats;
+              const visual = getVisualSeat(seat);
+
+              if (!visual) return null;
+
+              const isSelected = selected.includes(seat.id);
+              const fill = getSeatFill(seat, isSelected);
+
+              return (
+                <g
+                  key={seat.id}
+                  onClick={() => toggle(seat.id, seat.status)}
+                  style={{
+                    cursor: seat.status === 'available' ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s ease-in-out',
+                  }}
+                >
+                  <circle
+                    cx={visual.x}
+                    cy={visual.y}
+                    r={visual.r}
+                    fill={fill}
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                  />
+                  <text
+                    x={visual.x}
+                    y={visual.y}
+                    fontSize="11"
+                    fontWeight="700"
+                    fill="#ffffff"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    pointerEvents="none"
+                    style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                  >
+                    {meta.seat_number}
+                  </text>
+                  <title>
+                    {meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
+                  </title>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       </div>
     </div>
   );
