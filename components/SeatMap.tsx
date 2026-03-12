@@ -248,17 +248,54 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
                 >
                   {visual.shape === 'rect' ? (
                     <>
-                      <rect x={visual.x} y={visual.y} width={visual.w} height={visual.h} fill={fill} rx="12" stroke="#ffffff" strokeWidth="3" />
-                      {visual.lines.map((line: string, i: number) => (
-                        <text key={i} x={visual.x + (visual.w / 2)} y={visual.y + (visual.h / 2) - ((visual.lines.length - 1) * 8) + (i * 18)} fontSize="13" fontWeight="800" fill="#ffffff" textAnchor="middle" dominantBaseline="middle" pointerEvents="none" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                      <rect 
+                        x={visual.x} 
+                        y={visual.y} 
+                        width={(visual as any).w} 
+                        height={(visual as any).h} 
+                        fill={fill} 
+                        rx="12" 
+                        stroke="#ffffff" 
+                        strokeWidth="3" 
+                      />
+                      {(visual as any).lines.map((line: string, i: number) => (
+                        <text 
+                          key={i} 
+                          x={visual.x + ((visual as any).w / 2)} 
+                          y={visual.y + ((visual as any).h / 2) - (((visual as any).lines.length - 1) * 8) + (i * 18)} 
+                          fontSize="13" 
+                          fontWeight="800" 
+                          fill="#ffffff" 
+                          textAnchor="middle" 
+                          dominantBaseline="middle" 
+                          pointerEvents="none" 
+                          style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                        >
                           {line}
                         </text>
                       ))}
                     </>
                   ) : (
                     <>
-                      <circle cx={visual.x} cy={visual.y} r={visual.r} fill={fill} stroke="#ffffff" strokeWidth="2" />
-                      <text x={visual.x} y={visual.y} fontSize={isAccompagnatore ? "10" : "11"} fontWeight="700" fill="#ffffff" textAnchor="middle" dominantBaseline="middle" pointerEvents="none" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                      <circle 
+                        cx={visual.x} 
+                        cy={visual.y} 
+                        r={(visual as any).r} 
+                        fill={fill} 
+                        stroke="#ffffff" 
+                        strokeWidth="2" 
+                      />
+                      <text 
+                        x={visual.x} 
+                        y={visual.y} 
+                        fontSize={isAccompagnatore ? "10" : "11"} 
+                        fontWeight="700" 
+                        fill="#ffffff" 
+                        textAnchor="middle" 
+                        dominantBaseline="middle" 
+                        pointerEvents="none" 
+                        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                      >
                         {isAccompagnatore ? "ACC." : meta.seat_number}
                       </text>
                     </>
