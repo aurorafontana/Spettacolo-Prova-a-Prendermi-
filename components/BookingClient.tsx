@@ -114,12 +114,19 @@ export default function BookingClient({ event, seats }: any) {
         }}
       >
         <section style={mainCardStyle}>
-          <div style={seatMapWrapperStyle}>
+          <div
+            style={{
+              ...seatMapWrapperStyle,
+              overflowX: isMobile ? 'hidden' : 'auto',
+              overflowY: 'hidden',
+            }}
+          >
             <div
               style={{
                 transform: `scale(${mapScale})`,
                 transformOrigin: 'top left',
                 width: isMobile ? `${100 / mapScale}%` : '100%',
+                display: 'inline-block',
               }}
             >
               <SeatMap seats={seats} selected={selected} onToggle={setSelected} />
@@ -298,8 +305,9 @@ const sideCardStyle: CSSProperties = {
 
 const seatMapWrapperStyle: CSSProperties = {
   width: '100%',
-  overflowX: 'auto',
-  overflowY: 'hidden',
+  height: 'fit-content',
+  minHeight: 0,
+  overflow: 'visible',
   WebkitOverflowScrolling: 'touch',
   boxSizing: 'border-box',
 };
