@@ -53,7 +53,9 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
 
     const paddingX = 40;
     const paddingTop = 70;
-    const paddingBottom = 25;
+
+    // Ridotto quasi al minimo per eliminare lo spazio vuoto sotto SOLO nella mappa
+    const paddingBottom = isMobile ? 6 : 25;
 
     return {
       minX: Math.max(0, minX - paddingX),
@@ -61,15 +63,19 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
       maxX: maxX + paddingX,
       maxY: maxY + paddingBottom,
     };
-  }, [seats]);
+  }, [seats, isMobile]);
 
   const viewBoxX = seatBounds.minX;
   const viewBoxY = seatBounds.minY;
   const viewBoxWidth = Math.max(100, seatBounds.maxX - seatBounds.minX);
   const viewBoxHeight = Math.max(100, seatBounds.maxY - seatBounds.minY);
 
+  // Manteniamo la dimensione mobile leggibile, senza toccare il desktop
   const mobileScale = 0.7;
   const visualScale = isMobile ? mobileScale : 1;
+
+  const mobileRenderedHeight = viewBoxHeight * visualScale;
+  const mobileExtraCrop = 6;
 
   return (
     <div
@@ -85,9 +91,9 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
       <div
         style={{
           width: isMobile ? `${100 / visualScale}%` : '100%',
+          height: isMobile ? `${Math.max(0, mobileRenderedHeight - mobileExtraCrop)}px` : 'auto',
           transform: isMobile ? `scale(${visualScale})` : 'none',
           transformOrigin: 'top left',
-          marginBottom: isMobile ? `-${(1 - visualScale) * viewBoxHeight}px` : 0,
         }}
       >
         <svg
@@ -100,7 +106,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
           preserveAspectRatio="xMidYMin meet"
         >
           <text
-            x={(viewBoxX + viewBoxWidth / 2)}
+            x={viewBoxX + viewBoxWidth / 2}
             y={viewBoxY + 28}
             fontSize="24"
             fontWeight="700"
@@ -134,12 +140,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
                   cursor: seat.status === 'available' ? 'pointer' : 'not-allowed',
                 }}
               >
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={r}
-                  fill={fill}
-                />
+                <circle cx={x} cy={y} r={r} fill={fill} />
                 <title>
                   {meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
                 </title>
