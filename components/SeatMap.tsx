@@ -24,10 +24,10 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
   }
 
   function getSeatFill(seat: any, isSelected: boolean) {
-    if (seat.status === 'sold') return '#d9534f';
-    if (seat.status === 'locked') return '#f0ad4e';
-    if (isSelected) return '#0275d8';
-    return '#5cb85c';
+    if (seat.status === 'sold') return '#d9534f'; // Rosso
+    if (seat.status === 'locked') return '#f0ad4e'; // Giallo
+    if (isSelected) return '#0275d8'; // Blu selezione
+    return '#5cb85c'; // Verde disponibile
   }
 
   // --- LOGICA PLATEA ---
@@ -78,7 +78,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
 
     const x = centerX + (colIndex - 11.5) * seatGap;
 
-    return { x, y, r: radius };
+    return { x, y, r: radius, shape: 'circle' };
   }
 
   // --- LOGICA GALLERIA ---
@@ -118,12 +118,32 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
       const x = centerX + (colIndex - 11.5) * seatGap;
       const y = startY + rowIndex * rowGap;
 
-      return { x, y, r: 13 };
+      return { x, y, r: 13, shape: 'circle' };
     }
 
     const x = Number(meta.x_coord || 0);
     const y = Number(meta.y_coord || 0);
-    return { x: x + 40, y: y + 800, r: 13 };
+    return { x: x + 40, y: y + 800, r: 13, shape: 'circle' };
+  }
+
+  // --- LOGICA POSTI SPECIALI (Box e Casettine) ---
+  function getSpecialSeatPosition(label: string) {
+    switch (label) {
+      case 'BOX_DISABILI':
+        // Posizionato a destra delle file 7-8
+        return { x: 1000, y: 477, w: 75, h: 75, shape: 'rect', lines: ['BOX', 'DISABILI'] };
+      case 'CASETTA_DX':
+        // Casetta grande a destra
+        return { x: 1080, y: 600, w: 80, h: 250, shape: 'rect', lines: ['CASETTA', 'DX'] };
+      case 'CASETTA_SX_1':
+        // Prima casetta a sinistra (in alto)
+        return { x: 40, y: 300, w: 80, h: 220, shape: 'rect', lines: ['CASETTA', 'SX 1'] };
+      case 'CASETTA_SX_2':
+        // Seconda casetta a sinistra (in basso)
+        return { x: 40, y: 550, w: 80, h: 220, shape: 'rect', lines: ['CASETTA', 'SX 2'] };
+      default:
+        return null;
+    }
   }
 
   // --- CONTROLLER PRINCIPALE ---
@@ -132,6 +152,12 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
     const section = String(meta.section_code || '').toUpperCase();
     const rowLabel = String(meta.row_label || '');
     const seatNumber = Number(meta.seat_number || 0);
+    const label = String(meta.seat_label || '').toUpperCase();
+
+    // Intercetta i posti speciali
+    if (section === 'SPECIAL' || label.includes('CASETTA') || label.includes('BOX')) {
+      return getSpecialSeatPosition(label);
+    }
 
     if (section === 'PLATEA') {
       return getPlateaSeatPosition(rowLabel, seatNumber);
@@ -145,6 +171,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
       x: Number(meta.x_coord || 0),
       y: Number(meta.y_coord || 0),
       r: Number(meta.seat_radius || 12),
+      shape: 'circle'
     };
   }
 
@@ -206,77 +233,37 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
             </g>
 
             {/* TITOLI */}
-            <text
-              x="600"
-              y="150"
-              fontSize="22"
-              fontWeight="800"
-              textAnchor="middle"
-              fill="#444"
-              style={{
-                letterSpacing: '1px',
-                textDecoration: 'underline',
-                fontFamily: 'Arial, Helvetica, sans-serif',
-              }}
-            >
+            <text x="600" y="150" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>
               PLATEA
             </text>
-
-            <text
-              x="600"
-              y="445"
-              fontSize="18"
-              fontWeight="800"
-              textAnchor="middle"
-              fill="#7a7a7a"
-              style={{
-                letterSpacing: '2px',
-                fontFamily: 'Arial, Helvetica, sans-serif',
-              }}
-            >
+            <text x="600" y="445" fontSize="18" fontWeight="800" textAnchor="middle" fill="#7a7a7a" style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
               1° CORRIDOIO
             </text>
-
-            <text
-              x="600"
-              y="835"
-              fontSize="18"
-              fontWeight="800"
-              textAnchor="middle"
-              fill="#7a7a7a"
-              style={{
-                letterSpacing: '2px',
-                fontFamily: 'Arial, Helvetica, sans-serif',
-              }}
-            >
+            <text x="600" y="835" fontSize="18" fontWeight="800" textAnchor="middle" fill="#7a7a7a" style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
               2° CORRIDOIO
             </text>
-
-            <text
-              x="600"
-              y="1035"
-              fontSize="22"
-              fontWeight="800"
-              textAnchor="middle"
-              fill="#444"
-              style={{
-                letterSpacing: '1px',
-                textDecoration: 'underline',
-                fontFamily: 'Arial, Helvetica, sans-serif',
-              }}
-            >
+            <text x="600" y="1035" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>
               GALLERIA
             </text>
 
-            {/* POSTI */}
+            {/* RENDERING POSTI */}
             {seats.map((seat: any) => {
               const meta = seat.venue_seats;
               const visual = getVisualSeat(seat);
-
               if (!visual) return null;
 
               const isSelected = selected.includes(seat.id);
-              const fill = getSeatFill(seat, isSelected);
+              let fill = getSeatFill(seat, isSelected);
+
+              // Evidenziazione speciale: Posto 16 Fila 8 per Accompagnatore
+              const isAccompagnatore = 
+                String(meta.section_code).toUpperCase() === 'PLATEA' && 
+                String(meta.row_label) === '8' && 
+                Number(meta.seat_number) === 16;
+                
+              if (isAccompagnatore && seat.status === 'available' && !isSelected) {
+                fill = '#17a2b8'; // Colore Azzurro speciale per far capire che è riservato all'accompagnatore
+              }
 
               return (
                 <g
@@ -287,29 +274,65 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
                     transition: 'all 0.2s ease-in-out',
                   }}
                 >
-                  <circle
-                    cx={visual.x}
-                    cy={visual.y}
-                    r={visual.r}
-                    fill={fill}
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x={visual.x}
-                    y={visual.y}
-                    fontSize="11"
-                    fontWeight="700"
-                    fill="#ffffff"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    pointerEvents="none"
-                    style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-                  >
-                    {meta.seat_number}
-                  </text>
+                  {/* Se è un Box o Casetta (Rettangolo) */}
+                  {visual.shape === 'rect' ? (
+                    <>
+                      <rect 
+                        x={visual.x} 
+                        y={visual.y} 
+                        width={visual.w} 
+                        height={visual.h} 
+                        fill={fill} 
+                        rx="12" // Angoli arrotondati
+                        stroke="#ffffff" 
+                        strokeWidth="3" 
+                      />
+                      {visual.lines.map((line: string, i: number) => (
+                        <text
+                          key={i}
+                          x={visual.x + (visual.w / 2)}
+                          y={visual.y + (visual.h / 2) - ((visual.lines.length - 1) * 8) + (i * 18)}
+                          fontSize="13"
+                          fontWeight="800"
+                          fill="#ffffff"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          pointerEvents="none"
+                          style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                        >
+                          {line}
+                        </text>
+                      ))}
+                    </>
+                  ) : (
+                    /* Se è un posto normale (Cerchio) */
+                    <>
+                      <circle
+                        cx={visual.x}
+                        cy={visual.y}
+                        r={visual.r}
+                        fill={fill}
+                        stroke="#ffffff"
+                        strokeWidth="2"
+                      />
+                      <text
+                        x={visual.x}
+                        y={visual.y}
+                        fontSize={isAccompagnatore ? "10" : "11"}
+                        fontWeight="700"
+                        fill="#ffffff"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        pointerEvents="none"
+                        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+                      >
+                        {isAccompagnatore ? "ACC." : meta.seat_number}
+                      </text>
+                    </>
+                  )}
+                  
                   <title>
-                    {meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
+                    {isAccompagnatore ? "Posto Accompagnatore" : meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}
                   </title>
                 </g>
               );
