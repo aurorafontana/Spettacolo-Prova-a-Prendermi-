@@ -201,9 +201,14 @@ export default function BookingClient({ event, seats }: any) {
 
   return (
     <div style={pageWrapperStyle}>
-      <h1 style={titleStyle}>{event.title}</h1>
-
-      <div
+<div style={{ marginBottom: 24 }}>
+        <h1 style={titleStyle}>{event.title}</h1>
+        {event.description && (
+          <p style={descriptionStyle}>
+            {event.description}
+          </p>
+        )}
+      </div>
         style={{
           ...layoutStyle,
           gridTemplateColumns: isMobile
