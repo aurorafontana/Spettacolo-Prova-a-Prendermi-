@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       sessionToken
     },
     success_url: `${baseUrl}/success?order=${orderCode}`,
-    cancel_url: `${baseUrl}/cancel?order=${orderCode}`}`
+    cancel_url: `${baseUrl}/cancel?order=${orderCode}`
   });
 
   await supabase
