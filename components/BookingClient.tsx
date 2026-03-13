@@ -67,15 +67,23 @@ export default function BookingClient({ event, seats }: any) {
 
   function getSeatBasePrice(seat: any) {
     if (isSpecialSeat(seat)) {
-      return seat.price_cents || 0; // Prezzo fisso (es. 60€)
+      return seat.price_cents || 0; // Prezzo fisso (es. 60€ per casette, 15€ per box)
     }
     const type = seatTypes[seat.id] || 'adulto';
     return type === 'adulto' ? adultPriceCents : reducedPriceCents;
   }
 
   function getSeatBookingFee(seat: any) {
-    // Nessuna prevendita sulle casette/box
-    return isSpecialSeat(seat) ? 0 : bookingFeePerSeatCents;
+    if (isSpecialSeat(seat)) {
+      // Se è il Box Disabili, applica la prevendita di 1€
+      if (seat.id === 'virtual_box' || seat?.venue_seats?.seat_label === 'BOX_DISABILI') {
+        return bookingFeePerSeatCents;
+      }
+      // Se sono le Casette, niente prevendita (0€)
+      return 0;
+    }
+    // Per tutti i posti normali (Platea/Galleria) applica la prevendita
+    return bookingFeePerSeatCents;
   }
 
   function getSeatFinalPrice(seat: any) {
@@ -250,7 +258,11 @@ export default function BookingClient({ event, seats }: any) {
 
                         {special ? (
                           <div style={{ fontSize: 14, color: '#555', marginBottom: 8, padding: '4px 0' }}>
-                            <em>Stanza privata (Prezzo fisso)</em>
+                            <em>
+                              {(seatId === 'virtual_box' || seat.venue_seats?.seat_label === 'BOX_DISABILI')
+                                ? 'Posto riservato (€15 + €1 prevendita)'
+                                : 'Stanza privata (Prezzo fisso)'}
+                            </em>
                           </div>
                         ) : (
                           <div style={radioRowStyle}>
