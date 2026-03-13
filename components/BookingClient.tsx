@@ -277,7 +277,7 @@ export default function BookingClient({ event, seats }: any) {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#d9534f', flexShrink: 0 }} />
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#F0AD4E', flexShrink: 0 }} />
                   <div style={{ fontSize: 14, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>Acquistato / Non disponibile</div>
                 </div>
 
