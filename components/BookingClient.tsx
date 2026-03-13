@@ -201,7 +201,8 @@ export default function BookingClient({ event, seats }: any) {
 
   return (
     <div style={pageWrapperStyle}>
-<div style={{ marginBottom: 24 }}>
+      {/* SEZIONE TITOLO E DESCRIZIONE AGGIORNATA */}
+      <div style={{ marginBottom: 24 }}>
         <h1 style={titleStyle}>{event.title}</h1>
         {event.description && (
           <p style={descriptionStyle}>
@@ -209,6 +210,8 @@ export default function BookingClient({ event, seats }: any) {
           </p>
         )}
       </div>
+
+      <div
         style={{
           ...layoutStyle,
           gridTemplateColumns: isMobile
@@ -433,3 +436,5 @@ const successBoxStyle: CSSProperties = { marginTop: 16, padding: 12, borderRadiu
 const posterWrapperStyle: CSSProperties = { width: '100%', display: 'flex', alignItems: 'flex-end' };
 const posterStyle: CSSProperties = { width: '100%', height: 'auto', display: 'block', borderRadius: 14, objectFit: 'cover', border: '1px solid #d8d8d8' };
 const inputStyle: CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #ccc', fontSize: 14, boxSizing: 'border-box' };
+/* STILE DELLA DESCRIZIONE AGGIUNTO QUI */
+const descriptionStyle: CSSProperties = { margin: 0, fontSize: 16, lineHeight: 1.6, color: '#4a4a4a', fontWeight: 400, textAlign: 'justify' };
