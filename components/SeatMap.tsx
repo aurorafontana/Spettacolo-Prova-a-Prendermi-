@@ -121,14 +121,18 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
 
   // --- LOGICA POSTI SPECIALI (Box e Casettine) ---
   function getSpecialSeatPosition(label: string) {
-    switch (label) {
-      case 'BOX_DISABILI':
+    // Aggiungiamo .replace(/_/g, ' ') per far sì che riconosca
+    // sia i nomi con l'underscore che quelli con lo spazio!
+    const normalizedLabel = label.replace(/_/g, ' '); 
+
+    switch (normalizedLabel) {
+      case 'BOX DISABILI':
         return { x: 990, y: 460, w: 75, h: 75, shape: 'rect', lines: ['BOX', 'DISABILI'] };
-      case 'CASETTA_DX':
+      case 'CASETTA DX':
         return { x: 1080, y: 550, w: 80, h: 250, shape: 'rect', lines: ['CASETTA', 'DX'] };
-      case 'CASETTA_SX_1':
+      case 'CASETTA SX 1':
         return { x: 40, y: 300, w: 80, h: 220, shape: 'rect', lines: ['CASETTA', 'SX 1'] };
-      case 'CASETTA_SX_2':
+      case 'CASETTA SX 2':
         return { x: 40, y: 550, w: 80, h: 220, shape: 'rect', lines: ['CASETTA', 'SX 2'] };
       default:
         return null;
