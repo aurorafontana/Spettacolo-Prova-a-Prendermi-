@@ -30,16 +30,8 @@ export default function BookingClient({ event, seats }: any) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 1. INIETTIAMO I POSTI SPECIALI USANDO I VERI ID DEL DATABASE
-  const virtualSeats = useMemo(() => [
-    { id: 'b0000000-0000-0000-0000-000000000004', status: 'available', price_cents: 1500, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
-    { id: 'b0000000-0000-0000-0000-000000000003', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
-    { id: 'b0000000-0000-0000-0000-000000000001', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
-    { id: 'b0000000-0000-0000-0000-000000000002', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
-  ], []);
-
-  // Uniamo i posti del DB con quelli virtuali
-  const allSeats = useMemo(() => [...(seats || []), ...virtualSeats], [seats, virtualSeats]);
+  // 1. ORA USIAMO SOLO I POSTI REALI DAL DATABASE (niente più doppioni!)
+  const allSeats = useMemo(() => seats || [], [seats]);
 
   const selectedSeats = useMemo(
     () => allSeats.filter((s: any) => selected.includes(s.id)),
@@ -60,30 +52,30 @@ export default function BookingClient({ event, seats }: any) {
   const adultPriceCents = 1500;
   const reducedPriceCents = 1000;
 
-  // 2. FUNZIONI HELPER PER I PREZZI E POSTI SPECIALI
+  // 2. FUNZIONI HELPER PER RICONOSCERE LE CASETTE E ASSEGNARE I PREZZI
   function isSpecialSeat(seat: any) {
-    return seat?.venue_seats?.section_code === 'SPECIAL' || seat?.id.startsWith('b0000000-');
+    return seat?.id.startsWith('b0000000-') || seat?.venue_seats?.section_code === 'SPECIAL' || seat?.venue_seats?.section_code === 'CASETTA' || seat?.venue_seats?.section_code === 'BOX';
   }
 
   function getSeatBasePrice(seat: any) {
-    if (isSpecialSeat(seat)) {
-      return seat.price_cents || 0; // Prezzo fisso (es. 60€ per casette, 15€ per box)
-    }
+    const isBox = seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX DISABILI';
+    const isCasetta = seat.id.startsWith('b0000000-0000-0000-0000-00000000000') && seat.id !== 'b0000000-0000-0000-0000-000000000004';
+
+    if (isBox) return 1500; // 15€ per il Box Disabili
+    if (isCasetta) return 6000; // 60€ per le Casette
+    
     const type = seatTypes[seat.id] || 'adulto';
     return type === 'adulto' ? adultPriceCents : reducedPriceCents;
   }
 
   function getSeatBookingFee(seat: any) {
-    if (isSpecialSeat(seat)) {
-      // Se è il Box Disabili (controllando il nuovo ID), applica la prevendita di 1€
-      if (seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX_DISABILI') {
-        return bookingFeePerSeatCents;
-      }
-      // Se sono le Casette, niente prevendita (0€)
-      return 0;
-    }
-    // Per tutti i posti normali (Platea/Galleria) applica la prevendita
-    return bookingFeePerSeatCents;
+    const isBox = seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX DISABILI';
+    const isCasetta = seat.id.startsWith('b0000000-0000-0000-0000-00000000000') && seat.id !== 'b0000000-0000-0000-0000-000000000004';
+
+    if (isBox) return bookingFeePerSeatCents; // 1€ prevendita per il Box
+    if (isCasetta) return 0; // 0€ prevendita per le Casette
+    
+    return bookingFeePerSeatCents; // 1€ per la platea
   }
 
   function getSeatFinalPrice(seat: any) {
@@ -190,7 +182,6 @@ export default function BookingClient({ event, seats }: any) {
 
       setLockCompleted(true);
       
-      // --- INIZIO CHIAMATA A STRIPE ---
       const checkoutRes = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,7 +195,7 @@ export default function BookingClient({ event, seats }: any) {
             basePriceCents: getSeatBasePrice(seat),
             bookingFeeCents: getSeatBookingFee(seat),
             finalPriceCents: getSeatFinalPrice(seat),
-            seatName: seat.label || seat.id 
+            seatName: getSeatLabel(seat) // Invio il nome esatto a Stripe
           }))
         }),
       });
@@ -215,9 +206,7 @@ export default function BookingClient({ event, seats }: any) {
         throw new Error(checkoutJson.error || 'Errore nella creazione della pagina di pagamento Stripe');
       }
 
-      // Reindirizza l'utente alla cassa di Stripe!
       window.location.href = checkoutJson.url;
-      // --- FINE CHIAMATA A STRIPE ---
 
     } catch (err: any) {
       alert(err.message || 'Errore durante il blocco dei posti');
@@ -230,7 +219,6 @@ export default function BookingClient({ event, seats }: any) {
 
   return (
     <div style={pageWrapperStyle}>
-      {/* SEZIONE TITOLO E DESCRIZIONE AGGIORNATA */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={titleStyle}>{event.title}</h1>
         {event.description && (
@@ -286,6 +274,7 @@ export default function BookingClient({ event, seats }: any) {
                     const seatId = seat.id;
                     const special = isSpecialSeat(seat);
                     const seatType = seatTypes[seatId] || 'adulto';
+                    const isBox = seatId === 'b0000000-0000-0000-0000-000000000004' || seat.venue_seats?.seat_label?.includes('BOX');
 
                     return (
                       <div key={seatId} style={seatRowCardStyle}>
@@ -296,7 +285,7 @@ export default function BookingClient({ event, seats }: any) {
                         {special ? (
                           <div style={{ fontSize: 14, color: '#555', marginBottom: 8, padding: '4px 0' }}>
                             <em>
-                              {(seatId === 'b0000000-0000-0000-0000-000000000004' || seat.venue_seats?.seat_label === 'BOX_DISABILI')
+                              {isBox
                                 ? 'Posto riservato (€15 + €1 prevendita)'
                                 : 'Stanza privata (Prezzo fisso)'}
                             </em>
