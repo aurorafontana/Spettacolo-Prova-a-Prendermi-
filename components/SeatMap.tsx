@@ -226,29 +226,23 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
             <text x="600" y="820" fontSize="18" fontWeight="800" textAnchor="middle" fill="#7a7a7a" style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}>2° CORRIDOIO</text>
             <text x="600" y="1015" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>GALLERIA</text>
 
-{/* LEGENDA IN ALTO A SINISTRA (ZERO ASSOLUTO) */}
-            {/* translate(0, 0) lo incolla matematicamente all'angolo estremo della mappa */}
-            <g transform="translate(0, 0)">
-              <rect x="0" y="0" width="310" height="145" fill="#ffffff" rx="8" stroke="#d8d8d8" strokeWidth="2" />
-              <text x="12" y="24" fontSize="15" fontWeight="800" fill="#333" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Legenda Posti</text>
+<g transform="translate(16, 16)">
+  <rect x="0" y="0" width="285" height="138" fill="#ffffff" rx="10" stroke="#d8d8d8" strokeWidth="2" />
+  <text x="14" y="24" fontSize="15" fontWeight="800" fill="#333">Legenda Posti</text>
 
-              {/* Libero (Verde) */}
-              <circle cx="22" cy="48" r="7" fill="#5cb85c" />
-              <text x="39" y="52" fontSize="13" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Libero</text>
+  <circle cx="22" cy="48" r="7" fill="#5cb85c" />
+  <text x="40" y="52" fontSize="13" fill="#555">Libero</text>
 
-              {/* In Prenotazione (Blu) */}
-              <circle cx="22" cy="74" r="7" fill="#0275d8" />
-              <text x="39" y="72" fontSize="13" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Prenotazione</text>
-              <text x="39" y="88" fontSize="12" fill="#777" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>in attesa del pagamento</text>
+  <circle cx="22" cy="72" r="7" fill="#0275d8" />
+  <text x="40" y="70" fontSize="13" fill="#555">Prenotazione</text>
+  <text x="40" y="86" fontSize="12" fill="#777">in attesa del pagamento</text>
 
-              {/* Venduto (Rosso) */}
-              <circle cx="22" cy="112" r="7" fill="#d9534f" />
-              <text x="39" y="116" fontSize="13" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Acquistato / Non disponibile</text>
+  <circle cx="22" cy="108" r="7" fill="#d9534f" />
+  <text x="40" y="112" fontSize="13" fill="#555">Acquistato / Non disponibile</text>
 
-              {/* Accompagnatore (Azzurro) */}
-              <circle cx="22" cy="132" r="7" fill="#17a2b8" />
-              <text x="39" y="136" fontSize="13" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Riservato Accomp. Box Disabile</text>
-            </g>
+  <circle cx="22" cy="128" r="7" fill="#17a2b8" />
+  <text x="40" y="132" fontSize="13" fill="#555">Riservato accomp. box disabile</text>
+</g>
 
             {/* RENDERING DI TUTTI I POSTI */}
             {allSeatsToRender.map((seat: any) => {
