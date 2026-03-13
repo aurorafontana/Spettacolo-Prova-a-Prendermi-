@@ -32,7 +32,7 @@ export default function BookingClient({ event, seats }: any) {
 
   // 1. INIETTIAMO I POSTI VIRTUALI ANCHE QUI PER FARLI LEGGERE AL CARRELLO
   const virtualSeats = useMemo(() => [
-    { id: 'virtual_box', status: 'available', price_cents: 0, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
+    { id: 'virtual_box', status: 'available', price_cents: 1500, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
     { id: 'virtual_dx', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
     { id: 'virtual_sx1', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
     { id: 'virtual_sx2', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
