@@ -190,13 +190,21 @@ export default function BookingClient({ event, seats }: any) {
 
       setLockCompleted(true);
       
-      // --- INIZIO CHIAMATA A STRIPE ---
+// --- INIZIO CHIAMATA A STRIPE ---
       const checkoutRes = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId: event.id,
-          sessionToken: sessionToken
+          sessionToken: sessionToken,
+          customer: customer,
+          seatDetails: selectedSeats.map((seat: any) => ({
+            eventSeatId: seat.id,
+            ticketType: isSpecialSeat(seat) ? 'stanza_privata' : seatTypes[seat.id],
+            basePriceCents: getSeatBasePrice(seat),
+            bookingFeeCents: getSeatBookingFee(seat),
+            finalPriceCents: getSeatFinalPrice(seat),
+          }))
         }),
       });
 
