@@ -204,6 +204,7 @@ export default function BookingClient({ event, seats }: any) {
             basePriceCents: getSeatBasePrice(seat),
             bookingFeeCents: getSeatBookingFee(seat),
             finalPriceCents: getSeatFinalPrice(seat),
+            seatName: seat.label || seat.id // <--- AGGIUNGI QUESTA RIGA!
           }))
         }),
       });
