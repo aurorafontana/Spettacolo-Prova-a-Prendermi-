@@ -30,19 +30,28 @@ export default function BookingClient({ event, seats }: any) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 1. INIETTIAMO I POSTI VIRTUALI ANCHE QUI PER FARLI LEGGERE AL CARRELLO
+  const virtualSeats = useMemo(() => [
+    { id: 'virtual_box', status: 'available', price_cents: 0, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
+    { id: 'virtual_dx', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
+    { id: 'virtual_sx1', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
+    { id: 'virtual_sx2', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
+  ], []);
+
+  // Uniamo i posti del DB con quelli virtuali
+  const allSeats = useMemo(() => [...(seats || []), ...virtualSeats], [seats, virtualSeats]);
+
   const selectedSeats = useMemo(
-    () => seats.filter((s: any) => selected.includes(s.id)),
-    [selected, seats]
+    () => allSeats.filter((s: any) => selected.includes(s.id)),
+    [selected, allSeats]
   );
 
   useEffect(() => {
     setSeatTypes((prev) => {
       const updated: Record<string, SeatType> = {};
-
       for (const seatId of selected) {
         updated[seatId] = prev[seatId] || 'adulto';
       }
-
       return updated;
     });
   }, [selected]);
@@ -51,16 +60,36 @@ export default function BookingClient({ event, seats }: any) {
   const adultPriceCents = 1500;
   const reducedPriceCents = 1000;
 
+  // 2. FUNZIONI HELPER PER I PREZZI E POSTI SPECIALI
+  function isSpecialSeat(seat: any) {
+    return seat?.venue_seats?.section_code === 'SPECIAL' || seat?.id.startsWith('virtual_');
+  }
+
+  function getSeatBasePrice(seat: any) {
+    if (isSpecialSeat(seat)) {
+      return seat.price_cents || 0; // Prezzo fisso (es. 60€)
+    }
+    const type = seatTypes[seat.id] || 'adulto';
+    return type === 'adulto' ? adultPriceCents : reducedPriceCents;
+  }
+
+  function getSeatBookingFee(seat: any) {
+    // Nessuna prevendita sulle casette/box
+    return isSpecialSeat(seat) ? 0 : bookingFeePerSeatCents;
+  }
+
+  function getSeatFinalPrice(seat: any) {
+    return getSeatBasePrice(seat) + getSeatBookingFee(seat);
+  }
+
+  // 3. CALCOLO TOTALI DINAMICO
   const ticketTotal = useMemo(() => {
-    return selected.reduce((sum, seatId) => {
-      const type = seatTypes[seatId] || 'adulto';
-      return sum + (type === 'adulto' ? adultPriceCents : reducedPriceCents);
-    }, 0);
-  }, [selected, seatTypes]);
+    return selectedSeats.reduce((sum: number, seat: any) => sum + getSeatBasePrice(seat), 0);
+  }, [selectedSeats, seatTypes]);
 
   const bookingFeeTotal = useMemo(() => {
-    return selected.length * bookingFeePerSeatCents;
-  }, [selected.length]);
+    return selectedSeats.reduce((sum: number, seat: any) => sum + getSeatBookingFee(seat), 0);
+  }, [selectedSeats]);
 
   const finalTotal = useMemo(() => {
     return ticketTotal + bookingFeeTotal;
@@ -84,23 +113,14 @@ export default function BookingClient({ event, seats }: any) {
     );
   }
 
-  function getSeatBasePrice(seatId: string) {
-    const type = seatTypes[seatId] || 'adulto';
-    return type === 'adulto' ? adultPriceCents : reducedPriceCents;
-  }
-
-  function getSeatFinalPrice(seatId: string) {
-    return getSeatBasePrice(seatId) + bookingFeePerSeatCents;
-  }
-
   function startBooking() {
     if (!selected.length) {
       alert('Seleziona almeno un posto.');
       return;
     }
 
-    for (const seatId of selected) {
-      if (!seatTypes[seatId]) {
+    for (const seat of selectedSeats) {
+      if (!isSpecialSeat(seat) && !seatTypes[seat.id]) {
         alert('Seleziona la tipologia per tutti i posti.');
         return;
       }
@@ -114,19 +134,17 @@ export default function BookingClient({ event, seats }: any) {
       alert('Inserisci il nome.');
       return;
     }
-
     if (!customer.lastName.trim()) {
       alert('Inserisci il cognome.');
       return;
     }
-
     if (!customer.email.trim()) {
       alert('Inserisci l’email.');
       return;
     }
 
-    for (const seatId of selected) {
-      if (!seatTypes[seatId]) {
+    for (const seat of selectedSeats) {
+      if (!isSpecialSeat(seat) && !seatTypes[seat.id]) {
         alert('Seleziona la tipologia per tutti i posti.');
         return;
       }
@@ -143,18 +161,12 @@ export default function BookingClient({ event, seats }: any) {
           eventId: event.id,
           eventSeatIds: selected,
           sessionToken,
-          seatDetails: selected.map((seatId) => ({
-            eventSeatId: seatId,
-            ticketType: seatTypes[seatId],
-            basePriceCents:
-              seatTypes[seatId] === 'ridotto'
-                ? reducedPriceCents
-                : adultPriceCents,
-            bookingFeeCents: bookingFeePerSeatCents,
-            finalPriceCents:
-              (seatTypes[seatId] === 'ridotto'
-                ? reducedPriceCents
-                : adultPriceCents) + bookingFeePerSeatCents,
+          seatDetails: selectedSeats.map((seat: any) => ({
+            eventSeatId: seat.id,
+            ticketType: isSpecialSeat(seat) ? 'stanza_privata' : seatTypes[seat.id],
+            basePriceCents: getSeatBasePrice(seat),
+            bookingFeeCents: getSeatBookingFee(seat),
+            finalPriceCents: getSeatFinalPrice(seat),
           })),
           customer,
         }),
@@ -227,38 +239,45 @@ export default function BookingClient({ event, seats }: any) {
                 <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
                   {selectedSeats.map((seat: any) => {
                     const seatId = seat.id;
+                    const special = isSpecialSeat(seat);
                     const seatType = seatTypes[seatId] || 'adulto';
 
                     return (
-                      <div key={seat.id} style={seatRowCardStyle}>
+                      <div key={seatId} style={seatRowCardStyle}>
                         <div style={{ marginBottom: 8, fontWeight: 700 }}>
                           {getSeatLabel(seat)}
                         </div>
 
-                        <div style={radioRowStyle}>
-                          <label style={radioLabelStyle}>
-                            <input
-                              type="radio"
-                              name={`ticket-type-${seatId}`}
-                              checked={seatType === 'adulto'}
-                              onChange={() => updateSeatType(seatId, 'adulto')}
-                            />
-                            <span>Adulto (€15 + €1 prevendita)</span>
-                          </label>
+                        {special ? (
+                          <div style={{ fontSize: 14, color: '#555', marginBottom: 8, padding: '4px 0' }}>
+                            <em>Stanza privata (Prezzo fisso)</em>
+                          </div>
+                        ) : (
+                          <div style={radioRowStyle}>
+                            <label style={radioLabelStyle}>
+                              <input
+                                type="radio"
+                                name={`ticket-type-${seatId}`}
+                                checked={seatType === 'adulto'}
+                                onChange={() => updateSeatType(seatId, 'adulto')}
+                              />
+                              <span>Adulto (€15 + €1 prevendita)</span>
+                            </label>
 
-                          <label style={radioLabelStyle}>
-                            <input
-                              type="radio"
-                              name={`ticket-type-${seatId}`}
-                              checked={seatType === 'ridotto'}
-                              onChange={() => updateSeatType(seatId, 'ridotto')}
-                            />
-                            <span>Ridotto under 13 (€10 + €1 prevendita)</span>
-                          </label>
-                        </div>
+                            <label style={radioLabelStyle}>
+                              <input
+                                type="radio"
+                                name={`ticket-type-${seatId}`}
+                                checked={seatType === 'ridotto'}
+                                onChange={() => updateSeatType(seatId, 'ridotto')}
+                              />
+                              <span>Ridotto under 13 (€10 + €1 prevendita)</span>
+                            </label>
+                          </div>
+                        )}
 
                         <div style={{ marginTop: 8, fontSize: 14, color: '#333' }}>
-                          Totale posto: <strong>€ {(getSeatFinalPrice(seatId) / 100).toFixed(2)}</strong>
+                          Totale posto: <strong>€ {(getSeatFinalPrice(seat) / 100).toFixed(2)}</strong>
                         </div>
                       </div>
                     );
@@ -273,11 +292,6 @@ export default function BookingClient({ event, seats }: any) {
 
             <div style={{ marginBottom: 8 }}>
               <strong>Prevendita:</strong> € {(bookingFeeTotal / 100).toFixed(2)}
-              {selected.length > 0 && (
-                <span style={{ color: '#666', fontSize: 13 }}>
-                  {' '}({selected.length} x € {(bookingFeePerSeatCents / 100).toFixed(2)})
-                </span>
-              )}
             </div>
 
             <div style={{ marginBottom: 14, fontSize: 18 }}>
@@ -384,149 +398,21 @@ export default function BookingClient({ event, seats }: any) {
   );
 }
 
-const pageWrapperStyle: CSSProperties = {
-  width: '100%',
-  padding: '16px 12px',
-  boxSizing: 'border-box',
-};
-
-const titleStyle: CSSProperties = {
-  margin: '0 0 16px 0',
-  lineHeight: 1.15,
-  wordBreak: 'break-word',
-};
-
-const layoutStyle: CSSProperties = {
-  display: 'grid',
-  gap: 18,
-  alignItems: 'start',
-  width: '100%',
-};
-
-const sharedCardStyle: CSSProperties = {
-  background: '#f3f3f3',
-  border: '1px solid #d8d8d8',
-  borderRadius: 18,
-  boxSizing: 'border-box',
-};
-
-const mainCardStyle: CSSProperties = {
-  ...sharedCardStyle,
-  padding: 16,
-  minWidth: 0,
-  overflow: 'hidden',
-};
-
-const sideCardStyle: CSSProperties = {
-  ...sharedCardStyle,
-  padding: 16,
-  minWidth: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  gap: 18,
-};
-
-const seatMapWrapperStyle: CSSProperties = {
-  width: '100%',
-  height: 'fit-content',
-  minHeight: 0,
-  overflow: 'visible',
-  WebkitOverflowScrolling: 'touch',
-  boxSizing: 'border-box',
-};
-
-const summaryTitleStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 14,
-};
-
-const seatRowCardStyle: CSSProperties = {
-  border: '1px solid #d8d8d8',
-  borderRadius: 12,
-  padding: 12,
-  background: '#fff',
-};
-
-const radioRowStyle: CSSProperties = {
-  display: 'grid',
-  gap: 8,
-};
-
-const radioLabelStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  fontSize: 14,
-};
-
-const primaryButtonStyle: CSSProperties = {
-  marginTop: 8,
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 10,
-  border: 'none',
-  background: '#5f7eea',
-  color: '#fff',
-  fontWeight: 700,
-  fontSize: 16,
-};
-
-const confirmButtonStyle: CSSProperties = {
-  marginTop: 16,
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 10,
-  border: 'none',
-  background: '#15803d',
-  color: '#fff',
-  fontWeight: 700,
-  fontSize: 16,
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  marginTop: 10,
-  width: '100%',
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: '1px solid #cfcfcf',
-  background: '#fff',
-  color: '#333',
-  fontWeight: 600,
-  fontSize: 15,
-};
-
-const successBoxStyle: CSSProperties = {
-  marginTop: 16,
-  padding: 12,
-  borderRadius: 10,
-  background: '#ecfdf5',
-  border: '1px solid #86efac',
-  color: '#166534',
-  fontSize: 14,
-  lineHeight: 1.4,
-};
-
-const posterWrapperStyle: CSSProperties = {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'flex-end',
-};
-
-const posterStyle: CSSProperties = {
-  width: '100%',
-  height: 'auto',
-  display: 'block',
-  borderRadius: 14,
-  objectFit: 'cover',
-  border: '1px solid #d8d8d8',
-};
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: 10,
-  border: '1px solid #ccc',
-  fontSize: 14,
-  boxSizing: 'border-box',
-};
+const pageWrapperStyle: CSSProperties = { width: '100%', padding: '16px 12px', boxSizing: 'border-box' };
+const titleStyle: CSSProperties = { margin: '0 0 16px 0', lineHeight: 1.15, wordBreak: 'break-word' };
+const layoutStyle: CSSProperties = { display: 'grid', gap: 18, alignItems: 'start', width: '100%' };
+const sharedCardStyle: CSSProperties = { background: '#f3f3f3', border: '1px solid #d8d8d8', borderRadius: 18, boxSizing: 'border-box' };
+const mainCardStyle: CSSProperties = { ...sharedCardStyle, padding: 16, minWidth: 0, overflow: 'hidden' };
+const sideCardStyle: CSSProperties = { ...sharedCardStyle, padding: 16, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 18 };
+const seatMapWrapperStyle: CSSProperties = { width: '100%', height: 'fit-content', minHeight: 0, overflow: 'visible', WebkitOverflowScrolling: 'touch', boxSizing: 'border-box' };
+const summaryTitleStyle: CSSProperties = { marginTop: 0, marginBottom: 14 };
+const seatRowCardStyle: CSSProperties = { border: '1px solid #d8d8d8', borderRadius: 12, padding: 12, background: '#fff' };
+const radioRowStyle: CSSProperties = { display: 'grid', gap: 8 };
+const radioLabelStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 };
+const primaryButtonStyle: CSSProperties = { marginTop: 8, width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none', background: '#5f7eea', color: '#fff', fontWeight: 700, fontSize: 16 };
+const confirmButtonStyle: CSSProperties = { marginTop: 16, width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none', background: '#15803d', color: '#fff', fontWeight: 700, fontSize: 16 };
+const secondaryButtonStyle: CSSProperties = { marginTop: 10, width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #cfcfcf', background: '#fff', color: '#333', fontWeight: 600, fontSize: 15 };
+const successBoxStyle: CSSProperties = { marginTop: 16, padding: 12, borderRadius: 10, background: '#ecfdf5', border: '1px solid #86efac', color: '#166534', fontSize: 14, lineHeight: 1.4 };
+const posterWrapperStyle: CSSProperties = { width: '100%', display: 'flex', alignItems: 'flex-end' };
+const posterStyle: CSSProperties = { width: '100%', height: 'auto', display: 'block', borderRadius: 14, objectFit: 'cover', border: '1px solid #d8d8d8' };
+const inputStyle: CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #ccc', fontSize: 14, boxSizing: 'border-box' };
