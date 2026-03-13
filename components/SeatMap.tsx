@@ -121,9 +121,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
 
   // --- LOGICA POSTI SPECIALI (Box e Casettine) ---
   function getSpecialSeatPosition(label: string) {
-    // Aggiungiamo .replace(/_/g, ' ') per far sì che riconosca
-    // sia i nomi con l'underscore che quelli con lo spazio!
-    const normalizedLabel = label.replace(/_/g, ' '); 
+    const normalizedLabel = label.replace(/_/g, ' ');
 
     switch (normalizedLabel) {
       case 'BOX DISABILI':
@@ -160,21 +158,41 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
       x: Number(meta.x_coord || 0),
       y: Number(meta.y_coord || 0),
       r: Number(meta.seat_radius || 12),
-      shape: 'circle'
+      shape: 'circle',
     };
   }
 
   // INIEZIONE POSTI VIRTUALI (Con gli ID veri del database!)
   const virtualSeats = [
-    { id: 'b0000000-0000-0000-0000-000000000004', status: 'available', price_cents: 1500, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
-    { id: 'b0000000-0000-0000-0000-000000000003', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
-    { id: 'b0000000-0000-0000-0000-000000000001', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
-    { id: 'b0000000-0000-0000-0000-000000000002', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
+    {
+      id: 'b0000000-0000-0000-0000-000000000004',
+      status: 'available',
+      price_cents: 1500,
+      venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' },
+    },
+    {
+      id: 'b0000000-0000-0000-0000-000000000003',
+      status: 'available',
+      price_cents: 6000,
+      venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' },
+    },
+    {
+      id: 'b0000000-0000-0000-0000-000000000001',
+      status: 'available',
+      price_cents: 6000,
+      venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' },
+    },
+    {
+      id: 'b0000000-0000-0000-0000-000000000002',
+      status: 'available',
+      price_cents: 6000,
+      venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' },
+    },
   ];
 
   // Controllo anti-duplicati: se il database carica già questi posti, non li ri-aggiungiamo
   const dbSeatIds = new Set((seats || []).map((s: any) => s.id));
-  const filteredVirtualSeats = virtualSeats.filter(vs => !dbSeatIds.has(vs.id));
+  const filteredVirtualSeats = virtualSeats.filter((vs) => !dbSeatIds.has(vs.id));
 
   // Uniamo i posti veri (dal DB) con quelli di emergenza
   const allSeatsToRender = [...(seats || []), ...filteredVirtualSeats];
@@ -205,6 +223,98 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
       >
         <div
           style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            zIndex: 20,
+            background: '#ffffff',
+            border: '2px solid #d8d8d8',
+            borderRadius: 10,
+            padding: '12px 14px',
+            width: 285,
+            boxSizing: 'border-box',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 800,
+              color: '#333',
+              marginBottom: 10,
+              fontFamily: 'Arial, Helvetica, sans-serif',
+            }}
+          >
+            Legenda Posti
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: '#5cb85c',
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ fontSize: 13, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              Libero
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: '#0275d8',
+                flexShrink: 0,
+                marginTop: 2,
+              }}
+            />
+            <div style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              <div style={{ fontSize: 13, color: '#555', lineHeight: 1.2 }}>Prenotazione</div>
+              <div style={{ fontSize: 12, color: '#777', lineHeight: 1.2 }}>
+                in attesa del pagamento
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: '#d9534f',
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ fontSize: 13, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              Acquistato / Non disponibile
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: '#17a2b8',
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ fontSize: 13, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              Riservato accomp. box disabile
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
             width: `${svgWidth}px`,
             height: `${svgHeight}px`,
             transform: `scale(${scale})`,
@@ -215,34 +325,72 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
             {/* PALCO */}
             <g>
               <path d="M 340 20 L 860 20 L 860 75 L 878 98 L 878 115 L 858 92 L 342 92 L 322 115 L 322 98 L 340 75 Z" fill="#c9252d" />
-              <text x="600" y="58" fontSize="28" fontWeight="800" textAnchor="middle" fill="#ffffff" style={{ letterSpacing: '1px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              <text
+                x="600"
+                y="58"
+                fontSize="28"
+                fontWeight="800"
+                textAnchor="middle"
+                fill="#ffffff"
+                style={{ letterSpacing: '1px', fontFamily: 'Arial, Helvetica, sans-serif' }}
+              >
                 PALCOSCENICO
               </text>
             </g>
 
             {/* TITOLI CENTRATI */}
-            <text x="600" y="142" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>PLATEA</text>
-            <text x="600" y="435" fontSize="18" fontWeight="800" textAnchor="middle" fill="#7a7a7a" style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}>1° CORRIDOIO</text>
-            <text x="600" y="820" fontSize="18" fontWeight="800" textAnchor="middle" fill="#7a7a7a" style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}>2° CORRIDOIO</text>
-            <text x="600" y="1015" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>GALLERIA</text>
-
-<g transform="translate(16, 16)">
-  <rect x="0" y="0" width="285" height="138" fill="#ffffff" rx="10" stroke="#d8d8d8" strokeWidth="2" />
-  <text x="14" y="24" fontSize="15" fontWeight="800" fill="#333">Legenda Posti</text>
-
-  <circle cx="22" cy="48" r="7" fill="#5cb85c" />
-  <text x="40" y="52" fontSize="13" fill="#555">Libero</text>
-
-  <circle cx="22" cy="72" r="7" fill="#0275d8" />
-  <text x="40" y="70" fontSize="13" fill="#555">Prenotazione</text>
-  <text x="40" y="86" fontSize="12" fill="#777">in attesa del pagamento</text>
-
-  <circle cx="22" cy="108" r="7" fill="#d9534f" />
-  <text x="40" y="112" fontSize="13" fill="#555">Acquistato / Non disponibile</text>
-
-  <circle cx="22" cy="128" r="7" fill="#17a2b8" />
-  <text x="40" y="132" fontSize="13" fill="#555">Riservato accomp. box disabile</text>
-</g>
+            <text
+              x="600"
+              y="142"
+              fontSize="22"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#444"
+              style={{
+                letterSpacing: '1px',
+                textDecoration: 'underline',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              PLATEA
+            </text>
+            <text
+              x="600"
+              y="435"
+              fontSize="18"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#7a7a7a"
+              style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}
+            >
+              1° CORRIDOIO
+            </text>
+            <text
+              x="600"
+              y="820"
+              fontSize="18"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#7a7a7a"
+              style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}
+            >
+              2° CORRIDOIO
+            </text>
+            <text
+              x="600"
+              y="1015"
+              fontSize="22"
+              fontWeight="800"
+              textAnchor="middle"
+              fill="#444"
+              style={{
+                letterSpacing: '1px',
+                textDecoration: 'underline',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+              }}
+            >
+              GALLERIA
+            </text>
 
             {/* RENDERING DI TUTTI I POSTI */}
             {allSeatsToRender.map((seat: any) => {
@@ -254,13 +402,13 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
               let fill = getSeatFill(seat, isSelected);
 
               // Evidenziazione speciale: Posto 16 Fila 8 per Accompagnatore
-              const isAccompagnatore = 
-                String(meta.section_code).toUpperCase() === 'PLATEA' && 
-                String(meta.row_label) === '8' && 
+              const isAccompagnatore =
+                String(meta.section_code).toUpperCase() === 'PLATEA' &&
+                String(meta.row_label) === '8' &&
                 Number(meta.seat_number) === 16;
-                
+
               if (isAccompagnatore && seat.status === 'available' && !isSelected) {
-                fill = '#17a2b8'; // Azzurro Accompagnatore
+                fill = '#17a2b8';
               }
 
               return (
@@ -274,27 +422,32 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
                 >
                   {visual.shape === 'rect' ? (
                     <>
-                      <rect 
-                        x={visual.x} 
-                        y={visual.y} 
-                        width={(visual as any).w} 
-                        height={(visual as any).h} 
-                        fill={fill} 
-                        rx="12" 
-                        stroke="#ffffff" 
-                        strokeWidth="3" 
+                      <rect
+                        x={visual.x}
+                        y={visual.y}
+                        width={(visual as any).w}
+                        height={(visual as any).h}
+                        fill={fill}
+                        rx="12"
+                        stroke="#ffffff"
+                        strokeWidth="3"
                       />
                       {(visual as any).lines.map((line: string, i: number) => (
-                        <text 
-                          key={i} 
-                          x={visual.x + ((visual as any).w / 2)} 
-                          y={visual.y + ((visual as any).h / 2) - (((visual as any).lines.length - 1) * 8) + (i * 18)} 
-                          fontSize="13" 
-                          fontWeight="800" 
-                          fill="#ffffff" 
-                          textAnchor="middle" 
-                          dominantBaseline="middle" 
-                          pointerEvents="none" 
+                        <text
+                          key={i}
+                          x={visual.x + (visual as any).w / 2}
+                          y={
+                            visual.y +
+                            (visual as any).h / 2 -
+                            (((visual as any).lines.length - 1) * 8) +
+                            i * 18
+                          }
+                          fontSize="13"
+                          fontWeight="800"
+                          fill="#ffffff"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          pointerEvents="none"
                           style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
                         >
                           {line}
@@ -303,30 +456,30 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
                     </>
                   ) : (
                     <>
-                      <circle 
-                        cx={visual.x} 
-                        cy={visual.y} 
-                        r={(visual as any).r} 
-                        fill={fill} 
-                        stroke="#ffffff" 
-                        strokeWidth="2" 
+                      <circle
+                        cx={visual.x}
+                        cy={visual.y}
+                        r={(visual as any).r}
+                        fill={fill}
+                        stroke="#ffffff"
+                        strokeWidth="2"
                       />
-                      <text 
-                        x={visual.x} 
-                        y={visual.y} 
-                        fontSize={isAccompagnatore ? "10" : "11"} 
-                        fontWeight="700" 
-                        fill="#ffffff" 
-                        textAnchor="middle" 
-                        dominantBaseline="middle" 
-                        pointerEvents="none" 
+                      <text
+                        x={visual.x}
+                        y={visual.y}
+                        fontSize={isAccompagnatore ? '10' : '11'}
+                        fontWeight="700"
+                        fill="#ffffff"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        pointerEvents="none"
                         style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
                       >
-                        {isAccompagnatore ? "ACC." : meta.seat_number}
+                        {isAccompagnatore ? 'ACC.' : meta.seat_number}
                       </text>
                     </>
                   )}
-                  <title>{isAccompagnatore ? "Posto Accompagnatore" : meta.seat_label} - {seat.status}</title>
+                  <title>{isAccompagnatore ? 'Posto Accompagnatore' : meta.seat_label} - {seat.status}</title>
                 </g>
               );
             })}
