@@ -19,8 +19,9 @@ export default function SuccessPage({
           Mostra questo codice all'ingresso del teatro.
         </p>
         <div style={{ marginTop: '32px' }}>
-          <a href="/" style={{ padding: '12px 24px', backgroundColor: '#059669', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
-            Torna alla Home
+          {/* LINK AGGIORNATO QUI SOTTO */}
+          <a href="/events/prova-a-prendermi" style={{ padding: '12px 24px', backgroundColor: '#059669', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+            Torna allo Spettacolo
           </a>
         </div>
       </div>
