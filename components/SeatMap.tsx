@@ -23,7 +23,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
     );
   }
 
-  ffunction getSeatFill(seat: any, isSelected: boolean) {
+  function getSeatFill(seat: any, isSelected: boolean) {
     if (seat.status === 'sold') return '#F0AD4E'; // <-- Sostituito il rosso con l'arancione
     if (seat.status === 'locked') return '#f0ad4e';
     if (isSelected) return '#0275d8';
