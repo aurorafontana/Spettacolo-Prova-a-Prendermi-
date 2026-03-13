@@ -227,29 +227,27 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
             <text x="600" y="1015" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>GALLERIA</text>
 
 {/* LEGENDA IN ALTO A SINISTRA */}
-            <g transform="translate(40, 20)">
-              <rect x="0" y="0" width="290" height="175" fill="#ffffff" rx="12" stroke="#d8d8d8" strokeWidth="2" />
+            {/* I numeri in translate(5, 5) sono i pixel di distanza da sinistra e dall'alto */}
+            <g transform="translate(5, 5)">
+              <rect x="0" y="0" width="370" height="175" fill="#ffffff" rx="12" stroke="#d8d8d8" strokeWidth="2" />
               <text x="15" y="28" fontSize="16" fontWeight="800" fill="#333" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Legenda Posti</text>
 
-              {/* Libero */}
+              {/* Libero (Verde) */}
               <circle cx="25" cy="55" r="8" fill="#5cb85c" />
               <text x="45" y="59" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Libero</text>
 
-              {/* Selezionato */}
-              <circle cx="25" cy="80" r="8" fill="#0275d8" />
-              <text x="45" y="84" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Tuo posto (Selezionato)</text>
+              {/* Selezionato (Blu) - Diviso su due righe per non farlo uscire dal box */}
+              <circle cx="25" cy="82" r="8" fill="#0275d8" />
+              <text x="45" y="80" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Tuo posto (Selezionato, bloccato per 10 minuti</text>
+              <text x="45" y="98" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>in attesa del pagamento)</text>
 
-              {/* In Pagamento */}
-              <circle cx="25" cy="105" r="8" fill="#f0ad4e" />
-              <text x="45" y="109" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>In pagamento (Bloccato 10 min)</text>
+              {/* Venduto (Rosso) */}
+              <circle cx="25" cy="125" r="8" fill="#d9534f" />
+              <text x="45" y="129" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Acquistato / Non disponibile</text>
 
-              {/* Venduto */}
-              <circle cx="25" cy="130" r="8" fill="#d9534f" />
-              <text x="45" y="134" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Acquistato / Non disponibile</text>
-
-              {/* Accompagnatore */}
-              <circle cx="25" cy="155" r="8" fill="#17a2b8" />
-              <text x="45" y="159" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Riservato Accompagnatore</text>
+              {/* Accompagnatore (Azzurro) */}
+              <circle cx="25" cy="150" r="8" fill="#17a2b8" />
+              <text x="45" y="154" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Riservato Accompagnatore Box Disabile</text>
             </g>
 
             {/* RENDERING DI TUTTI I POSTI */}
