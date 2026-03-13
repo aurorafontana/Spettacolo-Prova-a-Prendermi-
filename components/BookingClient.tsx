@@ -30,7 +30,6 @@ export default function BookingClient({ event, seats }: any) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 1. ORA USIAMO SOLO I POSTI REALI DAL DATABASE (niente più doppioni!)
   const allSeats = useMemo(() => seats || [], [seats]);
 
   const selectedSeats = useMemo(
@@ -52,7 +51,6 @@ export default function BookingClient({ event, seats }: any) {
   const adultPriceCents = 1500;
   const reducedPriceCents = 1000;
 
-  // 2. FUNZIONI HELPER PER RICONOSCERE LE CASETTE E ASSEGNARE I PREZZI
   function isSpecialSeat(seat: any) {
     return seat?.id.startsWith('b0000000-') || seat?.venue_seats?.section_code === 'SPECIAL' || seat?.venue_seats?.section_code === 'CASETTA' || seat?.venue_seats?.section_code === 'BOX';
   }
@@ -61,8 +59,8 @@ export default function BookingClient({ event, seats }: any) {
     const isBox = seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX DISABILI';
     const isCasetta = seat.id.startsWith('b0000000-0000-0000-0000-00000000000') && seat.id !== 'b0000000-0000-0000-0000-000000000004';
 
-    if (isBox) return 1500; // 15€ per il Box Disabili
-    if (isCasetta) return 6000; // 60€ per le Casette
+    if (isBox) return 1500;
+    if (isCasetta) return 6000;
     
     const type = seatTypes[seat.id] || 'adulto';
     return type === 'adulto' ? adultPriceCents : reducedPriceCents;
@@ -72,17 +70,16 @@ export default function BookingClient({ event, seats }: any) {
     const isBox = seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX DISABILI';
     const isCasetta = seat.id.startsWith('b0000000-0000-0000-0000-00000000000') && seat.id !== 'b0000000-0000-0000-0000-000000000004';
 
-    if (isBox) return bookingFeePerSeatCents; // 1€ prevendita per il Box
-    if (isCasetta) return 0; // 0€ prevendita per le Casette
+    if (isBox) return bookingFeePerSeatCents;
+    if (isCasetta) return 0;
     
-    return bookingFeePerSeatCents; // 1€ per la platea
+    return bookingFeePerSeatCents;
   }
 
   function getSeatFinalPrice(seat: any) {
     return getSeatBasePrice(seat) + getSeatBookingFee(seat);
   }
 
-  // 3. CALCOLO TOTALI DINAMICO
   const ticketTotal = useMemo(() => {
     return selectedSeats.reduce((sum: number, seat: any) => sum + getSeatBasePrice(seat), 0);
   }, [selectedSeats, seatTypes]);
@@ -195,7 +192,7 @@ export default function BookingClient({ event, seats }: any) {
             basePriceCents: getSeatBasePrice(seat),
             bookingFeeCents: getSeatBookingFee(seat),
             finalPriceCents: getSeatFinalPrice(seat),
-            seatName: getSeatLabel(seat) // Invio il nome esatto a Stripe
+            seatName: getSeatLabel(seat)
           }))
         }),
       });
@@ -259,6 +256,39 @@ export default function BookingClient({ event, seats }: any) {
 
         <aside style={sideCardStyle}>
           <div>
+            {/* === LEGENDA INSERITA QUI (SOPRA IL RIEPILOGO) === */}
+            <div style={{ marginBottom: 24, padding: 16, background: '#fff', border: '1px solid #d8d8d8', borderRadius: 12 }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#333', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                Legenda Posti
+              </h4>
+              
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#5cb85c', flexShrink: 0 }} />
+                  <div style={{ fontSize: 14, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>Libero</div>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#0275d8', flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                    <div style={{ fontSize: 14, color: '#555', lineHeight: 1.2 }}>Prenotazione</div>
+                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.2 }}>in attesa del pagamento</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#d9534f', flexShrink: 0 }} />
+                  <div style={{ fontSize: 14, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>Acquistato / Non disponibile</div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#17a2b8', flexShrink: 0 }} />
+                  <div style={{ fontSize: 14, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>Riservato accomp. box disabile</div>
+                </div>
+              </div>
+            </div>
+            {/* ================================================= */}
+
             <h3 style={summaryTitleStyle}>Riepilogo</h3>
 
             <div style={{ marginBottom: 8 }}>
