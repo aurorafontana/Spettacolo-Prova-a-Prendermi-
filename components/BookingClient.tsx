@@ -189,7 +189,27 @@ export default function BookingClient({ event, seats }: any) {
       }
 
       setLockCompleted(true);
-      alert('Dati salvati e posti bloccati correttamente. Il prossimo step sarà il pagamento.');
+      
+      // --- INIZIO CHIAMATA A STRIPE ---
+      const checkoutRes = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: event.id,
+          sessionToken: sessionToken
+        }),
+      });
+
+      const checkoutJson = await checkoutRes.json();
+
+      if (!checkoutRes.ok || !checkoutJson.url) {
+        throw new Error(checkoutJson.error || 'Errore nella creazione della pagina di pagamento Stripe');
+      }
+
+      // Reindirizza l'utente alla cassa di Stripe!
+      window.location.href = checkoutJson.url;
+      // --- FINE CHIAMATA A STRIPE ---
+
     } catch (err: any) {
       alert(err.message || 'Errore durante il blocco dei posti');
     } finally {
@@ -379,7 +399,7 @@ export default function BookingClient({ event, seats }: any) {
                     opacity: loading ? 0.8 : 1,
                   }}
                 >
-                  {loading ? 'Attendere...' : 'Conferma dati e blocca posti'}
+                  {loading ? 'Attendere...' : 'Conferma dati e vai alla cassa'}
                 </button>
 
                 <button
@@ -398,7 +418,7 @@ export default function BookingClient({ event, seats }: any) {
                   <div style={successBoxStyle}>
                     Posti bloccati correttamente.
                     <br />
-                    Il prossimo step sarà il pagamento.
+                    Reindirizzamento a Stripe in corso...
                   </div>
                 )}
               </div>
