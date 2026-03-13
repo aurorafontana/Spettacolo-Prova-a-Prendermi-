@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
       eventId,
       sessionToken
     },
-    success_url: `${baseUrl}/events/success?order=${orderCode}`,
-    cancel_url: `${baseUrl}/events/cancel?order=${orderCode}`
+    success_url: `${baseUrl}/success?order=${orderCode}`,
+    cancel_url: `${baseUrl}/cancel?order=${orderCode}`}`
   });
 
   await supabase
