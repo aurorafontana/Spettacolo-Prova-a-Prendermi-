@@ -197,7 +197,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
   // Uniamo i posti veri (dal DB) con quelli di emergenza
   const allSeatsToRender = [...(seats || []), ...filteredVirtualSeats];
 
-  const scale = isMobile ? 0.75 : 1;
+  const scale = isMobile ? 0.60 : 1;
   const svgWidth = 1200;
   const svgHeight = 1350;
 
