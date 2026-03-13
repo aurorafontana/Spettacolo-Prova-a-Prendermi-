@@ -160,16 +160,20 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
     };
   }
 
-  // INIEZIONE POSTI VIRTUALI: Creiamo i 4 posti manualmente per farli apparire subito
+  // INIEZIONE POSTI VIRTUALI (Con gli ID veri del database!)
   const virtualSeats = [
-    { id: 'virtual_box', status: 'available', price_cents: 0, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
-    { id: 'virtual_dx', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
-    { id: 'virtual_sx1', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
-    { id: 'virtual_sx2', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
+    { id: 'b0000000-0000-0000-0000-000000000004', status: 'available', price_cents: 1500, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
+    { id: 'b0000000-0000-0000-0000-000000000003', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
+    { id: 'b0000000-0000-0000-0000-000000000001', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
+    { id: 'b0000000-0000-0000-0000-000000000002', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
   ];
 
-  // Uniamo i posti veri (dal DB) con i nostri posti virtuali
-  const allSeatsToRender = [...(seats || []), ...virtualSeats];
+  // Controllo anti-duplicati: se il database carica già questi posti, non li ri-aggiungiamo
+  const dbSeatIds = new Set((seats || []).map((s: any) => s.id));
+  const filteredVirtualSeats = virtualSeats.filter(vs => !dbSeatIds.has(vs.id));
+
+  // Uniamo i posti veri (dal DB) con quelli di emergenza
+  const allSeatsToRender = [...(seats || []), ...filteredVirtualSeats];
 
   const scale = isMobile ? 0.75 : 1;
   const svgWidth = 1200;
@@ -218,7 +222,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
             <text x="600" y="835" fontSize="18" fontWeight="800" textAnchor="middle" fill="#7a7a7a" style={{ letterSpacing: '2px', fontFamily: 'Arial, Helvetica, sans-serif' }}>2° CORRIDOIO</text>
             <text x="600" y="1035" fontSize="22" fontWeight="800" textAnchor="middle" fill="#444" style={{ letterSpacing: '1px', textDecoration: 'underline', fontFamily: 'Arial, Helvetica, sans-serif' }}>GALLERIA</text>
 
-            {/* RENDERING DI TUTTI I POSTI (Veri + Virtuali) */}
+            {/* RENDERING DI TUTTI I POSTI */}
             {allSeatsToRender.map((seat: any) => {
               const meta = seat.venue_seats || {};
               const visual = getVisualSeat(seat);

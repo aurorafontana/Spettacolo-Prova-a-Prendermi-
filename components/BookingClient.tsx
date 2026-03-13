@@ -30,12 +30,12 @@ export default function BookingClient({ event, seats }: any) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 1. INIETTIAMO I POSTI VIRTUALI ANCHE QUI PER FARLI LEGGERE AL CARRELLO
+  // 1. INIETTIAMO I POSTI SPECIALI USANDO I VERI ID DEL DATABASE
   const virtualSeats = useMemo(() => [
-    { id: 'virtual_box', status: 'available', price_cents: 1500, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
-    { id: 'virtual_dx', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
-    { id: 'virtual_sx1', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
-    { id: 'virtual_sx2', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
+    { id: 'b0000000-0000-0000-0000-000000000004', status: 'available', price_cents: 1500, venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' } },
+    { id: 'b0000000-0000-0000-0000-000000000003', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' } },
+    { id: 'b0000000-0000-0000-0000-000000000001', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' } },
+    { id: 'b0000000-0000-0000-0000-000000000002', status: 'available', price_cents: 6000, venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' } }
   ], []);
 
   // Uniamo i posti del DB con quelli virtuali
@@ -62,7 +62,7 @@ export default function BookingClient({ event, seats }: any) {
 
   // 2. FUNZIONI HELPER PER I PREZZI E POSTI SPECIALI
   function isSpecialSeat(seat: any) {
-    return seat?.venue_seats?.section_code === 'SPECIAL' || seat?.id.startsWith('virtual_');
+    return seat?.venue_seats?.section_code === 'SPECIAL' || seat?.id.startsWith('b0000000-');
   }
 
   function getSeatBasePrice(seat: any) {
@@ -75,8 +75,8 @@ export default function BookingClient({ event, seats }: any) {
 
   function getSeatBookingFee(seat: any) {
     if (isSpecialSeat(seat)) {
-      // Se è il Box Disabili, applica la prevendita di 1€
-      if (seat.id === 'virtual_box' || seat?.venue_seats?.seat_label === 'BOX_DISABILI') {
+      // Se è il Box Disabili (controllando il nuovo ID), applica la prevendita di 1€
+      if (seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX_DISABILI') {
         return bookingFeePerSeatCents;
       }
       // Se sono le Casette, niente prevendita (0€)
@@ -190,7 +190,7 @@ export default function BookingClient({ event, seats }: any) {
 
       setLockCompleted(true);
       
-// --- INIZIO CHIAMATA A STRIPE ---
+      // --- INIZIO CHIAMATA A STRIPE ---
       const checkoutRes = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,7 +204,7 @@ export default function BookingClient({ event, seats }: any) {
             basePriceCents: getSeatBasePrice(seat),
             bookingFeeCents: getSeatBookingFee(seat),
             finalPriceCents: getSeatFinalPrice(seat),
-            seatName: seat.label || seat.id // <--- AGGIUNGI QUESTA RIGA!
+            seatName: seat.label || seat.id 
           }))
         }),
       });
@@ -296,7 +296,7 @@ export default function BookingClient({ event, seats }: any) {
                         {special ? (
                           <div style={{ fontSize: 14, color: '#555', marginBottom: 8, padding: '4px 0' }}>
                             <em>
-                              {(seatId === 'virtual_box' || seat.venue_seats?.seat_label === 'BOX_DISABILI')
+                              {(seatId === 'b0000000-0000-0000-0000-000000000004' || seat.venue_seats?.seat_label === 'BOX_DISABILI')
                                 ? 'Posto riservato (€15 + €1 prevendita)'
                                 : 'Stanza privata (Prezzo fisso)'}
                             </em>
@@ -465,5 +465,4 @@ const successBoxStyle: CSSProperties = { marginTop: 16, padding: 12, borderRadiu
 const posterWrapperStyle: CSSProperties = { width: '100%', display: 'flex', alignItems: 'flex-end' };
 const posterStyle: CSSProperties = { width: '100%', height: 'auto', display: 'block', borderRadius: 14, objectFit: 'cover', border: '1px solid #d8d8d8' };
 const inputStyle: CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #ccc', fontSize: 14, boxSizing: 'border-box' };
-/* STILE DELLA DESCRIZIONE AGGIUNTO QUI */
 const descriptionStyle: CSSProperties = { margin: 0, fontSize: 16, lineHeight: 1.6, color: '#4a4a4a', fontWeight: 400, textAlign: 'justify' };
