@@ -238,7 +238,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
 
               {/* Selezionato (Blu) - Diviso su due righe per non farlo uscire dal box */}
               <circle cx="25" cy="82" r="8" fill="#0275d8" />
-              <text x="45" y="80" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Prenotazione in corso (Selezionato, bloccato per 10 minuti</text>
+              <text x="45" y="80" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>Prenotazione </text>
               <text x="45" y="98" fontSize="14" fill="#555" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>in attesa del pagamento)</text>
 
               {/* Venduto (Rosso) */}
