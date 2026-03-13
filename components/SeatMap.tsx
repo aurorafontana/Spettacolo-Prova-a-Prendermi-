@@ -300,7 +300,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
                       </text>
                     </>
                   )}
-                  <title>{isAccompagnatore ? "Posto Accompagnatore" : meta.seat_label} - € {(seat.price_cents / 100).toFixed(2)} - {seat.status}</title>
+                  <title>{isAccompagnatore ? "Posto Accompagnatore" : meta.seat_label} - {seat.status}</title>
                 </g>
               );
             })}
