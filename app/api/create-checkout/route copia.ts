@@ -31,15 +31,6 @@ export async function POST(req: NextRequest) {
 
     if (customerError) throw new Error(`Errore salvataggio cliente: ${customerError.message}`);
 
-    // --- INIZIO TRUCCO ADMIN PER TEST A 1 EURO ---
-    // ATTENZIONE: Ricordati di rimuovere queste righe dopo il test!
-    seatDetails.forEach((seat: any) => {
-      if (seat.seatName === 'PLATEA-1-1') {
-        seat.finalPriceCents = 100; // Forza il prezzo a 1,00 € (100 centesimi)
-      }
-    });
-    // --- FINE TRUCCO ADMIN ---
-
     // 3. Calcola il totale
     const totalCents = seatDetails.reduce((sum: number, seat: any) => sum + seat.finalPriceCents, 0);
     const orderCode = generateCode('ORD');
