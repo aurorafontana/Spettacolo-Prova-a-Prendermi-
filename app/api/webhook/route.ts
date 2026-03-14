@@ -1,80 +1,108 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getSupabaseServiceClient } from '@/lib/supabaseServer';
+import { createClient } from '@supabase/supabase-js';
+import { google } from 'googleapis';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-// Il tuo link segreto di Google Sheets (già aggiornato)
-const GOOGLE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyXTOVE9MQqzpMgTkVOatLvYsLWwvbPNHxe3q7uIcZRUEmjj1C0dyHn7r0sOEHN87nF/exec';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16' as any,
+});
 
-export async function POST(req: NextRequest) {
-  const payload = await req.text();
-  const sig = req.headers.get('stripe-signature');
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-  let event;
+export async function POST(req: Request) {
+  const body = await req.text();
+  const sig = req.headers.get('stripe-signature') as string;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+  let event: Stripe.Event;
 
   try {
-    // 1. Verifica che il messaggio arrivi davvero da Stripe
-    event = stripe.webhooks.constructEvent(payload, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err: any) {
-    console.error(`❌ Webhook Signature Error: ${err.message}`);
+    console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // 2. Se il pagamento è stato completato con successo
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId;
-    
-    // Recuperiamo i nomi dei posti che abbiamo salvato nei metadata durante il checkout
-    const sessionSeats = session.metadata?.seats || 'Dettaglio posti non disponibile';
+    const metadata = session.metadata;
 
-    if (orderId) {
-      const supabase = getSupabaseServiceClient();
+    if (metadata && metadata.eventId && metadata.eventSeatIds) {
+      const seatIds = JSON.parse(metadata.eventSeatIds);
 
-      // A. Aggiorna l'ordine su Supabase come PAGATO
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'paid' })
-        .eq('id', orderId);
+      // 1. Aggiorna lo stato dei posti su Supabase a "sold"
+      const { error: dbError } = await supabase
+        .from('event_seats')
+        .update({ status: 'sold' })
+        .in('id', seatIds)
+        .eq('event_id', metadata.eventId);
 
-      if (updateError) {
-        console.error(`❌ Errore aggiornamento database: ${updateError.message}`);
+      if (dbError) {
+        console.error('Errore aggiornamento posti Supabase:', dbError);
+      } else {
+        console.log(`Posti ${seatIds.join(', ')} venduti con successo per l'evento ${metadata.eventId}`);
       }
 
-      // B. Recupera i dati completi per Google Sheets
-      const { data: orderData, error: fetchError } = await supabase
-        .from('orders')
-        .select(`
-          order_code,
-          total_cents,
-          customers (first_name, last_name, email, phone)
-        `)
-        .eq('id', orderId)
-        .single();
+      // 2. Prepara e invia i dati a Google Sheets
+      try {
+        const { data: seatsData } = await supabase
+          .from('event_seats')
+          .select('*, venue_seats(*)')
+          .in('id', seatIds);
 
-      if (orderData && !fetchError) {
-        const customer = orderData.customers as any;
-        
-        // C. Prepara il pacchetto dati per Google Sheets
-        const googleData = {
-          orderCode: orderData.order_code,
-          customerName: customer ? `${customer.first_name} ${customer.last_name}` : 'Cliente non trovato',
-          email: customer?.email || 'N/A',
-          phone: customer?.phone || '-',
-          seats: sessionSeats, // <-- Invia la stringa dei nomi dei posti (es: Platea 1-5, Casetta DX)
-          total: `€ ${(orderData.total_cents / 100).toFixed(2)}`
-        };
-
-        // D. Spedisce i dati al tuo link Google
-        try {
-          await fetch(GOOGLE_WEBHOOK_URL, {
-            method: 'POST',
-            body: JSON.stringify(googleData)
-          });
-          console.log(`✅ Dati inviati correttamente a Google Sheets per ordine: ${orderData.order_code}`);
-        } catch (googleErr) {
-          console.error(`❌ Errore invio a Google Sheets:`, googleErr);
+        let seatsList = 'N/A';
+        if (seatsData && seatsData.length > 0) {
+          seatsList = seatsData.map(seat => {
+            const vs = seat.venue_seats;
+            if (!vs) return 'Posto Sconosciuto';
+            if (vs.seat_label) return vs.seat_label;
+            return `${vs.section_code} Fila ${vs.row_label} Posto ${vs.seat_number}`;
+          }).join(', ');
         }
+
+        // --- NUOVA LOGICA: Riconoscimento della Data ---
+        let eventDateName = 'Data Sconosciuta';
+        if (metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e') {
+          eventDateName = '4 Aprile';
+        } else if (metadata.eventId === 'd9b4c3e2-1f8a-4b7d-9c6e-5a4b3c2d1e0f') {
+          eventDateName = '5 Aprile';
+        }
+        // -----------------------------------------------
+
+        const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS!);
+        const auth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+        const sheets = google.sheets({ version: 'v4', auth });
+        const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
+
+        // Aggiunto "eventDateName" alla fine dell'array (Colonna H)
+        const rowData = [
+          new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
+          metadata.customerName || 'N/A',
+          metadata.customerEmail || 'N/A',
+          metadata.customerPhone || 'N/A',
+          seatsList,
+          (session.amount_total! / 100).toFixed(2) + ' €',
+          session.payment_status === 'paid' ? 'Pagato' : 'In Sospeso',
+          eventDateName 
+        ];
+
+        await sheets.spreadsheets.values.append({
+          spreadsheetId,
+          range: 'Foglio1!A:H', // Assicurati che il nome del foglio sia corretto
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [rowData],
+          },
+        });
+
+        console.log('Dati aggiunti a Google Sheets con successo');
+      } catch (sheetsError) {
+        console.error('Errore inserimento in Google Sheets:', sheetsError);
       }
     }
   }
