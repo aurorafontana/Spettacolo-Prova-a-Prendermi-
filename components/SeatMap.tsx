@@ -24,7 +24,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
   }
 
   function getSeatFill(seat: any, isSelected: boolean) {
-    if (seat.status === 'sold') return '#F0AD4E'; // <-- Sostituito il rosso con l'arancione
+    if (seat.status === 'sold') return '#F0AD4E';
     if (seat.status === 'locked') return '#f0ad4e';
     if (isSelected) return '#0275d8';
     return '#5cb85c';
@@ -162,41 +162,6 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
     };
   }
 
-  // INIEZIONE POSTI VIRTUALI (Con gli ID veri del database!)
-  const virtualSeats = [
-    {
-      id: 'b0000000-0000-0000-0000-000000000004',
-      status: 'available',
-      price_cents: 1500,
-      venue_seats: { section_code: 'SPECIAL', seat_label: 'BOX_DISABILI' },
-    },
-    {
-      id: 'b0000000-0000-0000-0000-000000000003',
-      status: 'available',
-      price_cents: 6000,
-      venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_DX' },
-    },
-    {
-      id: 'b0000000-0000-0000-0000-000000000001',
-      status: 'available',
-      price_cents: 6000,
-      venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_1' },
-    },
-    {
-      id: 'b0000000-0000-0000-0000-000000000002',
-      status: 'available',
-      price_cents: 6000,
-      venue_seats: { section_code: 'SPECIAL', seat_label: 'CASETTA_SX_2' },
-    },
-  ];
-
-  // Controllo anti-duplicati: se il database carica già questi posti, non li ri-aggiungiamo
-  const dbSeatIds = new Set((seats || []).map((s: any) => s.id));
-  const filteredVirtualSeats = virtualSeats.filter((vs) => !dbSeatIds.has(vs.id));
-
-  // Uniamo i posti veri (dal DB) con quelli di emergenza
-  const allSeatsToRender = [...(seats || []), ...filteredVirtualSeats];
-
   const scale = isMobile ? 0.60 : 1;
   const svgWidth = 1200;
   const svgHeight = 1350;
@@ -301,7 +266,7 @@ export default function SeatMap({ seats, selected, onToggle }: any) {
             </text>
 
             {/* RENDERING DI TUTTI I POSTI */}
-            {allSeatsToRender.map((seat: any) => {
+            {(seats || []).map((seat: any) => {
               const meta = seat.venue_seats || {};
               const visual = getVisualSeat(seat);
               if (!visual) return null;

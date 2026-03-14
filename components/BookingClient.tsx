@@ -51,27 +51,25 @@ export default function BookingClient({ event, seats }: any) {
   const adultPriceCents = 1500;
   const reducedPriceCents = 1000;
 
+  // NUOVE FUNZIONI CHE LEGGONO IL NOME E NON L'ID
   function isSpecialSeat(seat: any) {
-    return seat?.id.startsWith('b0000000-') || seat?.venue_seats?.section_code === 'SPECIAL' || seat?.venue_seats?.section_code === 'CASETTA' || seat?.venue_seats?.section_code === 'BOX';
+    const section = seat?.venue_seats?.section_code;
+    return section === 'SPECIAL' || section === 'CASETTA' || section === 'BOX';
   }
 
   function getSeatBasePrice(seat: any) {
-    const isBox = seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX DISABILI';
-    const isCasetta = seat.id.startsWith('b0000000-0000-0000-0000-00000000000') && seat.id !== 'b0000000-0000-0000-0000-000000000004';
-
-    if (isBox) return 1500;
-    if (isCasetta) return 6000;
+    const label = seat?.venue_seats?.seat_label || '';
+    if (label === 'BOX DISABILI') return 1500;
+    if (label.includes('CASETTA')) return 6000;
     
     const type = seatTypes[seat.id] || 'adulto';
     return type === 'adulto' ? adultPriceCents : reducedPriceCents;
   }
 
   function getSeatBookingFee(seat: any) {
-    const isBox = seat.id === 'b0000000-0000-0000-0000-000000000004' || seat?.venue_seats?.seat_label === 'BOX DISABILI';
-    const isCasetta = seat.id.startsWith('b0000000-0000-0000-0000-00000000000') && seat.id !== 'b0000000-0000-0000-0000-000000000004';
-
-    if (isBox) return bookingFeePerSeatCents;
-    if (isCasetta) return 0;
+    const label = seat?.venue_seats?.seat_label || '';
+    if (label === 'BOX DISABILI') return bookingFeePerSeatCents;
+    if (label.includes('CASETTA')) return 0;
     
     return bookingFeePerSeatCents;
   }
@@ -256,7 +254,7 @@ export default function BookingClient({ event, seats }: any) {
 
         <aside style={sideCardStyle}>
           <div>
-            {/* === LEGENDA INSERITA QUI (SOPRA IL RIEPILOGO) === */}
+            {/* === LEGENDA === */}
             <div style={{ marginBottom: 24, padding: 16, background: '#fff', border: '1px solid #d8d8d8', borderRadius: 12 }}>
               <h4 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#333', fontFamily: 'Arial, Helvetica, sans-serif' }}>
                 Legenda Posti
@@ -287,7 +285,6 @@ export default function BookingClient({ event, seats }: any) {
                 </div>
               </div>
             </div>
-            {/* ================================================= */}
 
             <h3 style={summaryTitleStyle}>Riepilogo</h3>
 
@@ -304,7 +301,7 @@ export default function BookingClient({ event, seats }: any) {
                     const seatId = seat.id;
                     const special = isSpecialSeat(seat);
                     const seatType = seatTypes[seatId] || 'adulto';
-                    const isBox = seatId === 'b0000000-0000-0000-0000-000000000004' || seat.venue_seats?.seat_label?.includes('BOX');
+                    const isBox = seat.venue_seats?.seat_label?.includes('BOX');
 
                     return (
                       <div key={seatId} style={seatRowCardStyle}>
