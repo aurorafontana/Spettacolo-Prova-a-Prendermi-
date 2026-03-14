@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "googleapis": "^171.4.0",
     "next": "latest",
     "qrcode": "latest",
     "react": "latest",
