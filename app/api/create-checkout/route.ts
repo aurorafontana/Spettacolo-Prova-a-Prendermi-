@@ -89,6 +89,15 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    // --- NUOVA LOGICA PER IL TASTO INDIETRO ---
+    // Scegliamo dove rimandare l'utente se annulla, in base all'ID dell'evento
+    let cancelPath = '/';
+    if (eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e') {
+      cancelPath = '/events/prova-a-prendermi'; // Ritorno al 4 Aprile
+    } else if (eventId === 'd9b4c3e2-1f8a-4b7d-9c6e-5a4b3c2d1e0f') {
+      cancelPath = '/events/prova-a-prendermi-5-aprile'; // Ritorno al 5 Aprile
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://spettacolo-prova-a-prendermi.vercel.app';
 
     // 7. Crea la sessione di pagamento Stripe
@@ -108,7 +117,8 @@ export async function POST(req: NextRequest) {
       },
       // Passiamo il vero ID ordine e i posti alla pagina di successo
       success_url: `${baseUrl}/success?order=${order.id}&seats=${encodeURIComponent(seatNamesString)}`,
-      cancel_url: `${baseUrl}/cancel?order=${orderCode}`
+      // Passiamo il link dinamico per il ritorno
+      cancel_url: `${baseUrl}${cancelPath}`
     });
 
     // 8. Aggiorna l'ordine con il link di pagamento
