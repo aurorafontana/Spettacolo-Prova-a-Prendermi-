@@ -30,13 +30,19 @@ export async function POST(req: Request) {
     
     console.log("📋 3. METADATA RICEVUTI DA STRIPE:", metadata);
 
-    if (metadata?.eventId && metadata?.eventSeatIds) {
+    // ABBIAMO CAMBIATO QUI: Ora cerchiamo "seats" invece di "eventSeatIds"
+    if (metadata?.eventId && metadata?.seats) {
       console.log("🎫 4. ID EVENTO E POSTI TROVATI. Procedo...");
-      const seatIds = JSON.parse(metadata.eventSeatIds);
+      
+      // I posti ora arrivano come stringa divisa da virgole (es: 'PLATEA-15-3, PLATEA-15-1')
+      const seatList = metadata.seats.split(',').map(s => s.trim());
       const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
 
       // 1. Aggiorna Supabase (Mappa)
-      const { error: dbError } = await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatIds).eq('event_id', metadata.eventId);
+      // ATTENZIONE: Se la tua tabella Supabase si aspetta gli ID numerici, questa riga fallirà
+      // perché ora stiamo inviando i nomi dei posti (es: 'PLATEA-15-3'). 
+      // Tienilo d'occhio nei log!
+      const { error: dbError } = await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatList).eq('event_id', metadata.eventId);
       
       if (dbError) {
         console.error("❌ ERRORE SUPABASE:", dbError.message);
@@ -54,10 +60,10 @@ export async function POST(req: Request) {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
-            nome: session.customer_details?.name || metadata.customerName || 'N/A',
-            email: session.customer_details?.email || metadata.customerEmail || 'N/A',
-            telefono: session.customer_details?.phone || metadata.customerPhone || 'N/A',
-            posti: seatIds.length,
+            nome: session.customer_details?.name || 'N/A',
+            email: session.customer_details?.email || 'N/A',
+            telefono: session.customer_details?.phone || 'N/A',
+            posti: seatList.length,
             prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
             dataSpettacolo: dataSpettacolo
           }),
@@ -68,7 +74,7 @@ export async function POST(req: Request) {
         console.error("❌ ERRORE DI CONNESSIONE A GOOGLE:", excelErr);
       }
     } else {
-      console.error("⚠️ ATTENZIONE: I metadata sono vuoti o mancano eventId/eventSeatIds. Il processo si ferma qui.");
+      console.error("⚠️ ATTENZIONE: I metadata sono vuoti o mancano eventId/seats. Il processo si ferma qui.");
     }
   }
 
