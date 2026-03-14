@@ -291,7 +291,7 @@ export default function BookingClient({ event, seats }: any) {
                     <strong>Nota:</strong> Le Casette laterali (Box) hanno una capienza di 4/5 posti a disposizione.
                   </div>
                   <div>
-                    <strong>Accessibilità:</strong> "I posti in galleria al piano superiore sono raggiungibili sia tramite le scale che con l’ascensore. Al piano sono presenti anche i servizi igienici.
+                    <strong>Accessibilità:</strong> I posti in galleria al piano superiore sono raggiungibili sia tramite le scale che con l’ascensore. Al piano sono presenti anche i servizi igienici.
                   </div>
                 </div>
               </div>
