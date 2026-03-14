@@ -51,7 +51,6 @@ export default function BookingClient({ event, seats }: any) {
   const adultPriceCents = 1500;
   const reducedPriceCents = 1000;
 
-  // NUOVE FUNZIONI CHE LEGGONO IL NOME E NON L'ID
   function isSpecialSeat(seat: any) {
     const section = seat?.venue_seats?.section_code;
     return section === 'SPECIAL' || section === 'CASETTA' || section === 'BOX';
@@ -135,6 +134,11 @@ export default function BookingClient({ event, seats }: any) {
     }
     if (!customer.email.trim()) {
       alert('Inserisci l’email.');
+      return;
+    }
+    // NUOVO CONTROLLO: Telefono obbligatorio
+    if (!customer.phone.trim()) {
+      alert('Inserisci il numero di telefono.');
       return;
     }
 
@@ -270,7 +274,7 @@ export default function BookingClient({ event, seats }: any) {
                   <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#0275d8', flexShrink: 0, marginTop: 2 }} />
                   <div style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
                     <div style={{ fontSize: 14, color: '#555', lineHeight: 1.2 }}>Prenotazione</div>
-                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.2 }}>in attesa del pagamento</div>
+                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.2 }}>in attesa del pagamento <br/>(bloccato per 10 min)</div>
                   </div>
                 </div>
 
@@ -282,6 +286,11 @@ export default function BookingClient({ event, seats }: any) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#17a2b8', flexShrink: 0 }} />
                   <div style={{ fontSize: 14, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>Riservato accomp. box disabile</div>
+                </div>
+
+                {/* NOTA CASETTE */}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e0e0e0', fontSize: 12, color: '#666', lineHeight: 1.3, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                  <strong>Nota:</strong> Le Casette laterali (Box) hanno una capienza di 4/5 posti a disposizione.
                 </div>
               </div>
             </div>
@@ -408,7 +417,7 @@ export default function BookingClient({ event, seats }: any) {
 
                   <input
                     type="text"
-                    placeholder="Telefono (facoltativo)"
+                    placeholder="Telefono *"
                     value={customer.phone}
                     onChange={(e) => updateCustomer('phone', e.target.value)}
                     style={inputStyle}
