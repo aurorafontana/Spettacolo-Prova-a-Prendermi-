@@ -39,20 +39,20 @@ export async function POST(req: Request) {
         await fetch(googleUrl, {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            // IL TRUCCO MAGICO: Usiamo text/plain per bypassare il blocco di sicurezza di Google
+            'Content-Type': 'text/plain;charset=utf-8',
           },
           body: JSON.stringify({
             dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
-            nome: session.customer_details?.name || metadata.customerName || 'N/A',
-            email: session.customer_details?.email || metadata.customerEmail || 'N/A',
-            telefono: session.customer_details?.phone || metadata.customerPhone || 'N/A',
+            nome: session.customer_details?.name || metadata?.customerName || 'N/A',
+            email: session.customer_details?.email || metadata?.customerEmail || 'N/A',
+            telefono: session.customer_details?.phone || metadata?.customerPhone || 'N/A',
             posti: seatIds.length,
             prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
             dataSpettacolo: dataSpettacolo
           }),
         });
-        console.log("Dati inviati a Google Sheets");
+        console.log("Dati inviati a Google Sheets con trucco text/plain");
       } catch (excelErr) {
         console.error("Errore di connessione a Google:", excelErr);
       }
