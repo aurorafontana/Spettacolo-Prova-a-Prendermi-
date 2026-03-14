@@ -136,7 +136,6 @@ export default function BookingClient({ event, seats }: any) {
       alert('Inserisci l’email.');
       return;
     }
-    // NUOVO CONTROLLO: Telefono obbligatorio
     if (!customer.phone.trim()) {
       alert('Inserisci il numero di telefono.');
       return;
@@ -258,7 +257,6 @@ export default function BookingClient({ event, seats }: any) {
 
         <aside style={sideCardStyle}>
           <div>
-            {/* === LEGENDA === */}
             <div style={{ marginBottom: 24, padding: 16, background: '#fff', border: '1px solid #d8d8d8', borderRadius: 12 }}>
               <h4 style={{ margin: '0 0 12px 0', fontSize: 16, color: '#333', fontFamily: 'Arial, Helvetica, sans-serif' }}>
                 Legenda Posti
@@ -288,9 +286,13 @@ export default function BookingClient({ event, seats }: any) {
                   <div style={{ fontSize: 14, color: '#555', fontFamily: 'Arial, Helvetica, sans-serif' }}>Riservato accomp. box disabile</div>
                 </div>
 
-                {/* NOTA CASETTE */}
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e0e0e0', fontSize: 12, color: '#666', lineHeight: 1.3, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                  <strong>Nota:</strong> Le Casette laterali (Box) hanno una capienza di 4/5 posti a disposizione.
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e0e0e0', fontSize: 12, color: '#666', lineHeight: 1.4, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                  <div style={{ marginBottom: 6 }}>
+                    <strong>Nota:</strong> Le Casette laterali (Box) hanno una capienza di 4/5 posti a disposizione.
+                  </div>
+                  <div>
+                    <strong>Accessibilità:</strong> "I posti in galleria al piano superiore sono raggiungibili sia tramite le scale che con l’ascensore. Al piano sono presenti anche i servizi igienici.
+                  </div>
                 </div>
               </div>
             </div>
