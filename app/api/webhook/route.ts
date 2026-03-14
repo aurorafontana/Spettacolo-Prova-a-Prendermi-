@@ -42,20 +42,29 @@ export async function POST(req: Request) {
       try {
         const googleUrl = "https://script.google.com/macros/s/AKfycbyXTOVE9MQqzpMgTkVOatLvYsLWwvbPNHxe3q7uIcZRUEmjj1C0dyHn7r0sOEHN87nF/exec";
         
+        // Peschiamo i dati REALI che il cliente (es. Mario Rossi) ha inserito al checkout
+        const nomeCliente = session.customer_details?.name || metadata?.customerName || 'N/A';
+        const emailCliente = session.customer_details?.email || metadata?.customerEmail || 'N/A';
+        const telefonoCliente = session.customer_details?.phone || metadata?.customerPhone || 'N/A';
+
         await fetch(googleUrl, {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
+          // Abbiamo RIMOSSO mode: 'no-cors' per inviare correttamente il JSON
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify({
             dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
-            nome: metadata.customerName || 'N/A',
-            email: metadata.customerEmail || 'N/A',
-            telefono: metadata.customerPhone || 'N/A',
+            nome: nomeCliente,
+            email: emailCliente,
+            telefono: telefonoCliente,
             posti: seatIds.length,
             prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
-            dataSpettacolo: dataSpettacolo // <--- INVIO DELLA NUOVA COLONNA
+            dataSpettacolo: dataSpettacolo // <--- INVIO DELLA NUOVA COLONNA H
           }),
         });
+        console.log("Inviato a Google Sheets con successo");
       } catch (excelErr) {
         console.error("Errore invio a Google Script:", excelErr);
       }
