@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err: any) {
-    return NextResponse.json({ error: "Firma non valida" }, { status: 400 });
+    return NextResponse.json({ error: "Errore Firma Stripe" }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -27,15 +27,38 @@ export async function POST(req: Request) {
 
     if (metadata?.eventId && metadata?.eventSeatIds) {
       const seatIds = JSON.parse(metadata.eventSeatIds);
+      
+      // Calcoliamo la data dello spettacolo
+      const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
 
-      // Aggiorniamo Supabase: segna i posti come venduti
-      const { error } = await supabase
+      // 1. Aggiorniamo Supabase (I posti tornano a diventare arancioni)
+      await supabase
         .from('event_seats')
         .update({ status: 'sold' })
         .in('id', seatIds)
         .eq('event_id', metadata.eventId);
 
-      if (error) console.error("Errore Supabase:", error.message);
+      // 2. Invio a Excel tramite il tuo link Apps Script
+      try {
+        const googleUrl = "https://script.google.com/macros/s/AKfycbyXTOVE9MQqzpMgTkVOatLvYsLWwvbPNHxe3q7uIcZRUEmjj1C0dyHn7r0sOEHN87nF/exec";
+        
+        await fetch(googleUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
+            nome: metadata.customerName || 'N/A',
+            email: metadata.customerEmail || 'N/A',
+            telefono: metadata.customerPhone || 'N/A',
+            posti: seatIds.length,
+            prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
+            dataSpettacolo: dataSpettacolo // <--- INVIO DELLA NUOVA COLONNA
+          }),
+        });
+      } catch (excelErr) {
+        console.error("Errore invio a Google Script:", excelErr);
+      }
     }
   }
 
