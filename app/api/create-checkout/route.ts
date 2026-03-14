@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
     if (orderError) throw new Error(`Errore creazione ordine: ${orderError.message}`);
 
     // 5. Prepara i nomi dei posti per Excel (es: "PLATEA-2-6, CASETTA DX")
-    // Usiamo .substring per non superare il limite di caratteri di Stripe metadata
     const seatNamesString = seatDetails
       .map((s: any) => s.seatName || 'Posto')
       .join(', ')
@@ -91,11 +90,17 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       customer_email: customer.email,
       line_items: lineItems,
+      // --- MODIFICA 1: Attiviamo la richiesta del telefono su Stripe ---
+      phone_number_collection: {
+        enabled: true,
+      },
       metadata: {
         orderId: order.id,
         eventId,
         sessionToken,
-        seats: seatNamesString // <-- Questo verrà letto dal Webhook per Google Sheets
+        seats: seatNamesString,
+        // --- MODIFICA 2: Inviamo a Stripe il telefono inserito sul sito ---
+        customerPhone: customer.phone || 'N/A' 
       },
       success_url: `${baseUrl}/success?order=${orderCode}`,
       cancel_url: `${baseUrl}/cancel?order=${orderCode}`
