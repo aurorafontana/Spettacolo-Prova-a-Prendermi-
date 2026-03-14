@@ -60,30 +60,29 @@ export async function POST(req: NextRequest) {
 
     // 6. Prepara gli oggetti per il carrello Stripe
     const lineItems = seatDetails.map((seat: any) => {
-      let itemName = "Biglietto Spettacolo";
-      
       // Calcoliamo la data in base all'ID dell'evento
       const dataTesto = eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
       
-      // Recuperiamo Nome e Cognome inseriti nel form
-      const intestatario = `${customer.firstName} ${customer.lastName}`;
+      // Prepariamo l'intestazione (Nome e Cognome) in maiuscolo per risaltare
+      const intestatario = `${customer.firstName} ${customer.lastName}`.toUpperCase();
 
+      let tipoTicket = "Biglietto Adulto";
       if (seat.ticketType === 'stanza_privata') {
-        itemName = `Prenotazione ${seat.seatName || 'Casetta/Box'}`;
+        tipoTicket = "Prenotazione Casetta";
       } else if (seat.ticketType === 'ridotto') {
-        itemName = `Biglietto Ridotto - Posto ${seat.seatName}`;
-      } else {
-        itemName = `Biglietto Adulto - Posto ${seat.seatName}`;
+        tipoTicket = "Biglietto Ridotto";
       }
+
+      // UNIAMO TUTTO NEL NOME: Stripe mostrerà questo titolo chiaramente nella ricevuta
+      const nomeCompletoProdotto = `${tipoTicket} - Posto ${seat.seatName || ''} | ${dataTesto} | ${intestatario}`;
 
       return {
         quantity: 1,
         price_data: {
           currency: 'eur',
           product_data: { 
-            name: itemName,
-            // DESCRIZIONE DETTAGLIATA PER LA RICEVUTA
-            description: `Intestatario: ${intestatario} | Data: ${dataTesto} ore 20:30`
+            name: nomeCompletoProdotto,
+            description: `Evento: Prova a Prendermi - Teatro Centrale Carbonia`
           },
           unit_amount: seat.finalPriceCents
         }
@@ -97,7 +96,6 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       customer_email: customer.email,
       line_items: lineItems,
-      // --- MODIFICA 1: Attiviamo la richiesta del telefono su Stripe ---
       phone_number_collection: {
         enabled: true,
       },
@@ -106,10 +104,10 @@ export async function POST(req: NextRequest) {
         eventId,
         sessionToken,
         seats: seatNamesString,
-        // --- MODIFICA 2: Inviamo a Stripe il telefono inserito sul sito ---
         customerPhone: customer.phone || 'N/A' 
       },
-      success_url: `${baseUrl}/success?order=${orderCode}`,
+      // Passiamo il vero ID ordine e i posti alla pagina di successo
+      success_url: `${baseUrl}/success?order=${order.id}&seats=${encodeURIComponent(seatNamesString)}`,
       cancel_url: `${baseUrl}/cancel?order=${orderCode}`
     });
 
