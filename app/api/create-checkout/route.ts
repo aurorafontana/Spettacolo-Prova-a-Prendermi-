@@ -62,6 +62,12 @@ export async function POST(req: NextRequest) {
     const lineItems = seatDetails.map((seat: any) => {
       let itemName = "Biglietto Spettacolo";
       
+      // Calcoliamo la data in base all'ID dell'evento
+      const dataTesto = eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
+      
+      // Recuperiamo Nome e Cognome inseriti nel form
+      const intestatario = `${customer.firstName} ${customer.lastName}`;
+
       if (seat.ticketType === 'stanza_privata') {
         itemName = `Prenotazione ${seat.seatName || 'Casetta/Box'}`;
       } else if (seat.ticketType === 'ridotto') {
@@ -76,7 +82,8 @@ export async function POST(req: NextRequest) {
           currency: 'eur',
           product_data: { 
             name: itemName,
-            description: `Evento: Prova a Prendermi`
+            // DESCRIZIONE DETTAGLIATA PER LA RICEVUTA
+            description: `Intestatario: ${intestatario} | Data: ${dataTesto} ore 20:30`
           },
           unit_amount: seat.finalPriceCents
         }
