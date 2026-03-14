@@ -11,19 +11,23 @@ export default function SuccessPage({
         <h1 style={{ fontSize: '32px', margin: '0 0 16px 0', color: '#047857' }}>
           🎉 Pagamento Riuscito!
         </h1>
+        
         <p style={{ fontSize: '18px', color: '#065f46', lineHeight: '1.5' }}>
           I tuoi posti sono stati bloccati e confermati con successo. <br /><br />
           Codice Ordine: <strong style={{ background: '#ecfdf5', padding: '4px 8px', borderRadius: '4px' }}>{orderCode}</strong>
         </p>
+        
         <p style={{ marginTop: '24px', fontSize: '15px', color: '#4b5563' }}>
           Mostra questo codice all'ingresso del teatro.
         </p>
-        <div style={{ marginTop: '32px' }}>
-          {/* LINK AGGIORNATO QUI SOTTO */}
-          <a href="/events/prova-a-prendermi" style={{ padding: '12px 24px', backgroundColor: '#059669', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
-            Torna allo Spettacolo
-          </a>
+        
+        {/* Messaggio finale al posto del pulsante */}
+        <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+          <p style={{ margin: 0, fontSize: '16px', color: '#059669', fontWeight: 'bold' }}>
+            ✓ Ora puoi chiudere questa pagina in modo sicuro.
+          </p>
         </div>
+        
       </div>
     </div>
   );
