@@ -62,14 +62,13 @@ export async function POST(req: Request) {
           }).join(', ');
         }
 
-        // --- NUOVA LOGICA: Riconoscimento della Data ---
+        // --- RICONOSCIMENTO DELLA DATA IN BASE ALL'ID ---
         let eventDateName = 'Data Sconosciuta';
         if (metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e') {
           eventDateName = '4 Aprile';
         } else if (metadata.eventId === 'd9b4c3e2-1f8a-4b7d-9c6e-5a4b3c2d1e0f') {
           eventDateName = '5 Aprile';
         }
-        // -----------------------------------------------
 
         const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS!);
         const auth = new google.auth.GoogleAuth({
@@ -79,7 +78,7 @@ export async function POST(req: Request) {
         const sheets = google.sheets({ version: 'v4', auth });
         const spreadsheetId = process.env.GOOGLE_SHEET_ID!;
 
-        // Aggiunto "eventDateName" alla fine dell'array (Colonna H)
+        // --- CREAZIONE DELLA RIGA CON 8 COLONNE (Fino alla H) ---
         const rowData = [
           new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
           metadata.customerName || 'N/A',
@@ -88,12 +87,12 @@ export async function POST(req: Request) {
           seatsList,
           (session.amount_total! / 100).toFixed(2) + ' €',
           session.payment_status === 'paid' ? 'Pagato' : 'In Sospeso',
-          eventDateName 
+          eventDateName // <--- ECCO LA MAGIA NELL'OTTAVA COLONNA
         ];
 
         await sheets.spreadsheets.values.append({
           spreadsheetId,
-          range: 'Foglio1!A:H', // Assicurati che il nome del foglio sia corretto
+          range: 'Foglio1!A:H', // <--- AGGIORNATO DA A:G AD A:H
           valueInputOption: 'USER_ENTERED',
           requestBody: {
             values: [rowData],
