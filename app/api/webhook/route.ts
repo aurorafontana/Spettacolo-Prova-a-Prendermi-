@@ -27,46 +27,34 @@ export async function POST(req: Request) {
 
     if (metadata?.eventId && metadata?.eventSeatIds) {
       const seatIds = JSON.parse(metadata.eventSeatIds);
-      
-      // Calcoliamo la data dello spettacolo
       const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
 
-      // 1. Aggiorniamo Supabase (I posti tornano a diventare arancioni)
-      await supabase
-        .from('event_seats')
-        .update({ status: 'sold' })
-        .in('id', seatIds)
-        .eq('event_id', metadata.eventId);
+      // 1. Aggiorna Supabase (Mappa)
+      await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatIds).eq('event_id', metadata.eventId);
 
-      // 2. Invio a Excel tramite il tuo link Apps Script
+      // 2. Invia a Google Sheets con il tuo NUOVO link
       try {
-        const googleUrl = "https://script.google.com/macros/s/AKfycbyXTOVE9MQqzpMgTkVOatLvYsLWwvbPNHxe3q7uIcZRUEmjj1C0dyHn7r0sOEHN87nF/exec";
+        const googleUrl = "https://script.google.com/macros/s/AKfycbxXjYsXrp2mu7P7CuyCPU0I4-_tyXwr5HFb0lekU12Jd9XVKW73WA4NyooyFcvbHkZ1/exec";
         
-        // Peschiamo i dati REALI che il cliente (es. Mario Rossi) ha inserito al checkout
-        const nomeCliente = session.customer_details?.name || metadata?.customerName || 'N/A';
-        const emailCliente = session.customer_details?.email || metadata?.customerEmail || 'N/A';
-        const telefonoCliente = session.customer_details?.phone || metadata?.customerPhone || 'N/A';
-
         await fetch(googleUrl, {
           method: 'POST',
-          // Abbiamo RIMOSSO mode: 'no-cors' per inviare correttamente il JSON
           headers: { 
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           body: JSON.stringify({
             dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
-            nome: nomeCliente,
-            email: emailCliente,
-            telefono: telefonoCliente,
+            nome: session.customer_details?.name || metadata.customerName || 'N/A',
+            email: session.customer_details?.email || metadata.customerEmail || 'N/A',
+            telefono: session.customer_details?.phone || metadata.customerPhone || 'N/A',
             posti: seatIds.length,
             prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
-            dataSpettacolo: dataSpettacolo // <--- INVIO DELLA NUOVA COLONNA H
+            dataSpettacolo: dataSpettacolo
           }),
         });
-        console.log("Inviato a Google Sheets con successo");
+        console.log("Dati inviati a Google Sheets");
       } catch (excelErr) {
-        console.error("Errore invio a Google Script:", excelErr);
+        console.error("Errore di connessione a Google:", excelErr);
       }
     }
   }
