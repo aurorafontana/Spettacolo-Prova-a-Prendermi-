@@ -6,6 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
 });
 
+// Usiamo la chiave "Service Role" per bypassare i blocchi di sicurezza
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export async function POST(req: Request) {
@@ -24,34 +25,61 @@ export async function POST(req: Request) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata;
+    const orderId = metadata?.orderId; // Recuperiamo l'ID dell'ordine
 
-    if (metadata?.eventId && metadata?.seats) {
-      const seatList = metadata.seats.split(',').map(s => s.trim());
-      const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
+    if (orderId) {
+      // 1. SUPABASE: Diciamo finalmente al database che l'ordine è PAGATO!
+      await supabase
+        .from('orders')
+        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .eq('id', orderId);
 
-      // 1. Aggiorna Supabase (Mappa)
-      await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatList).eq('event_id', metadata.eventId);
+      // 2. Troviamo i posti che erano stati bloccati per questo ordine (serve per gli ID corretti)
+      const { data: locks } = await supabase
+        .from('seat_locks')
+        .select('event_seat_id')
+        .eq('order_id', orderId);
 
-      // 2. Invia a Google Sheets
-      try {
+      // 3. SUPABASE: Aggiorniamo la mappa in modo corretto
+      if (locks && locks.length > 0) {
+        const seatIds = locks.map(l => l.event_seat_id);
+
+        // Rendiamo i posti 'sold' (venduti) sulla mappa
+        await supabase
+          .from('event_seats')
+          .update({ status: 'sold' })
+          .in('id', seatIds);
+
+        // Cancelliamo il blocco temporaneo che teneva il posto "arancione"
+        await supabase
+          .from('seat_locks')
+          .delete()
+          .eq('order_id', orderId);
+      }
+
+      // 4. GOOGLE SHEETS: Invio dati per il tuo file Excel
+      if (metadata?.eventId && metadata?.seats) {
+        const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
         const googleUrl = "https://script.google.com/macros/s/AKfycbxXjYsXrp2mu7P7CuyCPU0I4-_tyXwr5HFb0lekU12Jd9XVKW73WA4NyooyFcvbHkZ1/exec";
         
-        await fetch(googleUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
-            codiceOrdine: metadata.orderId || 'N/A', // <--- INVIAMO IL VERO ID DELL'ORDINE
-            nome: session.customer_details?.name || 'N/A',
-            email: session.customer_details?.email || 'N/A',
-            telefono: session.customer_details?.phone || 'N/A',
-            posti: metadata.seats, // <--- INVIAMO I NOMI DEI POSTI (Es: PLATEA-15-3)
-            prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
-            dataSpettacolo: dataSpettacolo
-          }),
-        });
-      } catch (excelErr) {
-        console.error("Errore di connessione a Google:", excelErr);
+        try {
+          await fetch(googleUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
+              codiceOrdine: orderId || 'N/A',
+              nome: session.customer_details?.name || 'N/A',
+              email: session.customer_details?.email || 'N/A',
+              telefono: session.customer_details?.phone || 'N/A',
+              posti: metadata.seats,
+              prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
+              dataSpettacolo: dataSpettacolo
+            }),
+          });
+        } catch (excelErr) {
+          console.error("Errore di connessione a Google:", excelErr);
+        }
       }
     }
   }
