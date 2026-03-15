@@ -1,50 +1,53 @@
 import { notFound } from 'next/navigation';
-// Corretto il nome della funzione secondo il suggerimento del log di Vercel
 import { getSupabaseServiceClient } from '@/lib/supabaseServer';
-// Corretto il percorso: usiamo il percorso relativo corretto per il componente
-import ClientSeatMap from '../[id]/ClientSeatMap'; 
+import ClientSeatMap from './ClientSeatMap'; 
 
+// 1. Forza il caricamento dinamico per pulire i posti scaduti ad ogni refresh
 export const revalidate = 0; 
 
-export default async function EventPage({ params }: { params: { id: string } }) {
-  // Usiamo il nome corretto della funzione esistente nel tuo progetto
+export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
+  // In Next.js 15+, i params vanno "attesi" (await)
+  const { slug } = await params;
   const supabase = getSupabaseServiceClient();
   const now = new Date().toISOString();
 
   // --- 🧹 PULIZIA AUTOMATICA (LAZY CLEANUP) ---
-  await supabase
-    .from('event_seats')
-    .update({ status: 'available', lock_expires_at: null })
-    .eq('event_id', params.id)
-    .eq('status', 'booked')
-    .lt('lock_expires_at', now);
+  // Cerchiamo l'evento tramite slug per ottenere l'ID necessario alla pulizia
+  const { data: eventCleanup } = await supabase
+    .from('events')
+    .select('id')
+    .eq('slug', slug)
+    .single();
+
+  if (eventCleanup) {
+    await supabase
+      .from('event_seats')
+      .update({ status: 'available', lock_expires_at: null })
+      .eq('event_id', eventCleanup.id)
+      .eq('status', 'booked')
+      .lt('lock_expires_at', now);
+  }
   // --------------------------------------------
 
-  // Fetch dell'evento
+  // 2. RECUPERO DATI EVENTO
   const { data: event, error: eventError } = await supabase
     .from('events')
     .select('*')
-    .eq('id', params.id)
+    .eq('slug', slug)
     .single();
 
   if (eventError || !event) {
-    console.error('Evento non trovato:', eventError);
     notFound();
   }
 
-  // Fetch della venue
-  const { data: venue, error: venueError } = await supabase
+  // 3. RECUPERO DATI VENUE (Per il viewBox della mappa)
+  const { data: venue } = await supabase
     .from('venues')
     .select('*')
     .eq('id', event.venue_id)
     .single();
 
-  if (venueError || !venue) {
-    console.error('Venue non trovata:', venueError);
-    notFound();
-  }
-
-  // Fetch della mappa posti
+  // 4. RECUPERO POSTI AGGIORNATI
   const { data: eventSeats, error: seatsError } = await supabase
     .from('event_seats')
     .select(`
@@ -68,12 +71,13 @@ export default async function EventPage({ params }: { params: { id: string } }) 
         d
       )
     `)
-    .eq('event_id', params.id);
+    .eq('event_id', event.id);
 
   if (seatsError) {
     console.error('Errore caricamento posti:', seatsError);
   }
 
+  // 5. FORMATTAZIONE DATI PER IL COMPONENTE CLIENT
   const formattedSeats = eventSeats?.map((es: any) => ({
     eventSeatId: es.id,
     venueSeatId: es.venue_seat_id,
@@ -115,7 +119,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
         <ClientSeatMap 
           eventId={event.id}
           seats={formattedSeats}
-          viewBox={venue.viewbox || "0 0 800 600"}
+          viewBox={venue?.viewbox || "0 0 800 600"}
         />
       </div>
     </main>
