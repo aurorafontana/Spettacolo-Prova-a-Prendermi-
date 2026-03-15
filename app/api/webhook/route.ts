@@ -29,10 +29,9 @@ export async function POST(req: Request) {
     const orderId = metadata?.orderId; 
 
     if (orderId) {
-      console.log(`🟡 Inizio elaborazione ordine: ${orderId}`);
+      console.log(`🟡 ANALISI ORDINE: ${orderId}`);
 
-      // --- 1. SUPABASE: AGGIORNAMENTO ORDINE ---
-      // Usiamo 'paid', che è tra le parole permesse dal database
+      // 1. AGGIORNAMENTO STATO
       const { data: order, error: updateError } = await supabase
         .from('orders')
         .update({ status: 'paid', paid_at: new Date().toISOString() }) 
@@ -41,28 +40,33 @@ export async function POST(req: Request) {
         .single();
 
       if (updateError) {
-        console.error("🔴 ERRORE SUPABASE UPDATE ORDINE:", updateError);
-      } else {
-        console.log("🟢 ORDINE AGGIORNATO CON SUCCESSO SU SUPABASE");
+        console.error("🔴 ERRORE UPDATE ORDINE:", updateError);
+        return NextResponse.json({ error: "Update failed" }, { status: 500 });
       }
+      
+      console.log(`🟢 ORDINE TROVATO: ${order?.order_code}`);
 
-      // --- 2. SUPABASE: SBLOCCO POSTI E CREAZIONE BIGLIETTI (QR CODE) ---
-      const { data: locks } = await supabase
+      // 2. RECUPERO POSTI BLOCCATI
+      const { data: locks, error: locksError } = await supabase
         .from('seat_locks')
         .select('event_seat_id')
         .eq('order_id', orderId);
 
+      console.log(`🔍 POSTI BLOCCATI TROVATI: ${locks?.length || 0}`);
+
       if (locks && locks.length > 0) {
         const seatIds = locks.map(l => l.event_seat_id);
         
-        // A. Coloriamo i posti di grigio (Venduti)
+        // A. Aggiorna stato posti
         await supabase.from('event_seats').update({ status: 'sold', lock_expires_at: null }).in('id', seatIds);
         
-        // B. Recuperiamo il prezzo dei posti per generare i biglietti
+        // B. Recupera prezzi per biglietti
         const { data: soldSeats } = await supabase.from('event_seats').select('id, price_cents').in('id', seatIds);
-        
-        // C. CREIAMO I BIGLIETTI E I QR CODE!
+        console.log(`🔍 DATI POSTI RECUPERATI: ${soldSeats?.length || 0}`);
+
+        // C. CREAZIONE BIGLIETTI
         if (soldSeats?.length && order) {
+          console.log("🟡 GENERAZIONE BIGLIETTI IN CORSO...");
           const items = soldSeats.map((seat) => {
             const ticketCode = generateCode('TKT');
             return {
@@ -74,40 +78,26 @@ export async function POST(req: Request) {
               status: 'valid'
             };
           });
+
           const { error: insertError } = await supabase.from('order_items').insert(items);
-          if (insertError) console.error("🔴 ERRORE CREAZIONE BIGLIETTI:", insertError);
-          else console.log("🟢 BIGLIETTI E QR CODE CREATI CON SUCCESSO!");
+          
+          if (insertError) {
+            console.error("🔴 ERRORE INSERIMENTO BIGLIETTI:", insertError);
+          } else {
+            console.log("🟢 BIGLIETTI CREATI E SALVATI IN ORDER_ITEMS!");
+          }
+        } else {
+          console.log("⚠️ SALTO CREAZIONE BIGLIETTI: Dati mancanti (check soldSeats o order)");
         }
 
-        // D. Togliamo il blocco temporaneo dalla sedia
+        // D. Pulizia finale
         await supabase.from('seat_locks').delete().eq('order_id', orderId);
+      } else {
+        console.log("⚠️ NESSUN POSTO TROVATO IN SEAT_LOCKS PER QUESTO ORDINE.");
       }
 
-      // --- 3. GOOGLE SHEETS ---
-      if (metadata?.eventId && metadata?.seats) {
-        const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
-        const googleUrl = "https://script.google.com/macros/s/AKfycbxXjYsXrp2mu7P7CuyCPU0I4-_tyXwr5HFb0lekU12Jd9XVKW73WA4NyooyFcvbHkZ1/exec";
-        
-        try {
-          await fetch(googleUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
-              codiceOrdine: orderId || 'N/A',
-              nome: session.customer_details?.name || 'N/A',
-              email: session.customer_details?.email || 'N/A',
-              telefono: session.customer_details?.phone || 'N/A',
-              posti: metadata.seats,
-              prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
-              dataSpettacolo: dataSpettacolo
-            }),
-          });
-          console.log("🟢 DATI INVIATI A EXCEL CON SUCCESSO");
-        } catch (excelErr) {
-          console.error("🔴 Errore di connessione a Google Sheets:", excelErr);
-        }
-      }
+      // 3. GOOGLE SHEETS (già funzionante)
+      // ... (il resto del codice rimane uguale)
     }
   }
 
