@@ -6,7 +6,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
 });
 
-// Usiamo la chiave "Service Role" per bypassare i blocchi di sicurezza
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export async function POST(req: Request) {
@@ -19,45 +18,48 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err: any) {
+    console.error(`🔴 Errore firma Webhook: ${err.message}`);
     return NextResponse.json({ error: "Errore Firma Stripe" }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata;
-    const orderId = metadata?.orderId; // Recuperiamo l'ID dell'ordine
+    const orderId = metadata?.orderId; 
 
     if (orderId) {
-      // 1. SUPABASE: Diciamo finalmente al database che l'ordine è PAGATO!
-      await supabase
-        .from('orders')
-        .update({ status: 'paid', paid_at: new Date().toISOString() })
-        .eq('id', orderId);
+      console.log(`🟡 Inizio elaborazione ordine: ${orderId}`);
 
-      // 2. Troviamo i posti che erano stati bloccati per questo ordine (serve per gli ID corretti)
+      // --- 1. SUPABASE: AGGIORNAMENTO ORDINE CON LOG E 'completed' ---
+      const { data: updatedOrder, error: updateError } = await supabase
+        .from('orders')
+        .update({ status: 'completed', paid_at: new Date().toISOString() }) 
+        .eq('id', orderId)
+        .select();
+
+      if (updateError) {
+        console.error("🔴 ERRORE SUPABASE UPDATE ORDINE:", updateError);
+      } else {
+        console.log("🟢 ORDINE AGGIORNATO CON SUCCESSO SU SUPABASE:", updatedOrder);
+      }
+
+      // --- 2. SUPABASE: SBLOCCO POSTI E MAPPA ---
       const { data: locks } = await supabase
         .from('seat_locks')
         .select('event_seat_id')
         .eq('order_id', orderId);
 
-      // 3. SUPABASE: Aggiorniamo la mappa in modo corretto
       if (locks && locks.length > 0) {
         const seatIds = locks.map(l => l.event_seat_id);
-
-        // Rendiamo i posti 'sold' (venduti) sulla mappa
-        await supabase
-          .from('event_seats')
-          .update({ status: 'sold' })
-          .in('id', seatIds);
-
-        // Cancelliamo il blocco temporaneo che teneva il posto "arancione"
-        await supabase
-          .from('seat_locks')
-          .delete()
-          .eq('order_id', orderId);
+        
+        const { error: seatError } = await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatIds);
+        if (seatError) console.error("🔴 ERRORE SUPABASE UPDATE POSTI:", seatError);
+        
+        await supabase.from('seat_locks').delete().eq('order_id', orderId);
+        console.log("🟢 POSTI AGGIORNATI E SBLOCCATI SULLA MAPPA");
       }
 
-      // 4. GOOGLE SHEETS: Invio dati per il tuo file Excel
+      // --- 3. GOOGLE SHEETS ---
       if (metadata?.eventId && metadata?.seats) {
         const dataSpettacolo = metadata.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
         const googleUrl = "https://script.google.com/macros/s/AKfycbxXjYsXrp2mu7P7CuyCPU0I4-_tyXwr5HFb0lekU12Jd9XVKW73WA4NyooyFcvbHkZ1/exec";
@@ -77,8 +79,9 @@ export async function POST(req: Request) {
               dataSpettacolo: dataSpettacolo
             }),
           });
+          console.log("🟢 DATI INVIATI A EXCEL CON SUCCESSO");
         } catch (excelErr) {
-          console.error("Errore di connessione a Google:", excelErr);
+          console.error("🔴 Errore di connessione a Google Sheets:", excelErr);
         }
       }
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { generateCode, makeQrPayload } from '@/lib/helpers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
@@ -30,20 +31,22 @@ export async function POST(req: Request) {
     if (orderId) {
       console.log(`🟡 Inizio elaborazione ordine: ${orderId}`);
 
-      // --- 1. SUPABASE: AGGIORNAMENTO ORDINE CON LOG E 'completed' ---
-      const { data: updatedOrder, error: updateError } = await supabase
+      // --- 1. SUPABASE: AGGIORNAMENTO ORDINE ---
+      // Usiamo 'paid', che è tra le parole permesse dal database
+      const { data: order, error: updateError } = await supabase
         .from('orders')
-        .update({ status: 'completed', paid_at: new Date().toISOString() }) 
+        .update({ status: 'paid', paid_at: new Date().toISOString() }) 
         .eq('id', orderId)
-        .select();
+        .select('id, order_code')
+        .single();
 
       if (updateError) {
         console.error("🔴 ERRORE SUPABASE UPDATE ORDINE:", updateError);
       } else {
-        console.log("🟢 ORDINE AGGIORNATO CON SUCCESSO SU SUPABASE:", updatedOrder);
+        console.log("🟢 ORDINE AGGIORNATO CON SUCCESSO SU SUPABASE");
       }
 
-      // --- 2. SUPABASE: SBLOCCO POSTI E MAPPA ---
+      // --- 2. SUPABASE: SBLOCCO POSTI E CREAZIONE BIGLIETTI (QR CODE) ---
       const { data: locks } = await supabase
         .from('seat_locks')
         .select('event_seat_id')
@@ -52,11 +55,32 @@ export async function POST(req: Request) {
       if (locks && locks.length > 0) {
         const seatIds = locks.map(l => l.event_seat_id);
         
-        const { error: seatError } = await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatIds);
-        if (seatError) console.error("🔴 ERRORE SUPABASE UPDATE POSTI:", seatError);
+        // A. Coloriamo i posti di grigio (Venduti)
+        await supabase.from('event_seats').update({ status: 'sold', lock_expires_at: null }).in('id', seatIds);
         
+        // B. Recuperiamo il prezzo dei posti per generare i biglietti
+        const { data: soldSeats } = await supabase.from('event_seats').select('id, price_cents').in('id', seatIds);
+        
+        // C. CREIAMO I BIGLIETTI E I QR CODE!
+        if (soldSeats?.length && order) {
+          const items = soldSeats.map((seat) => {
+            const ticketCode = generateCode('TKT');
+            return {
+              order_id: orderId,
+              event_seat_id: seat.id,
+              ticket_code: ticketCode,
+              qr_payload: makeQrPayload(ticketCode, order.order_code),
+              unit_price_cents: seat.price_cents,
+              status: 'valid'
+            };
+          });
+          const { error: insertError } = await supabase.from('order_items').insert(items);
+          if (insertError) console.error("🔴 ERRORE CREAZIONE BIGLIETTI:", insertError);
+          else console.log("🟢 BIGLIETTI E QR CODE CREATI CON SUCCESSO!");
+        }
+
+        // D. Togliamo il blocco temporaneo dalla sedia
         await supabase.from('seat_locks').delete().eq('order_id', orderId);
-        console.log("🟢 POSTI AGGIORNATI E SBLOCCATI SULLA MAPPA");
       }
 
       // --- 3. GOOGLE SHEETS ---
