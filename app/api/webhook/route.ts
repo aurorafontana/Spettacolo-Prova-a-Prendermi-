@@ -1,114 +1,105 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getSupabaseServiceClient } from '@/lib/supabaseServer';
-import { generateCode } from '@/lib/helpers';
+import { createClient } from '@supabase/supabase-js';
+import { generateCode, makeQrPayload } from '@/lib/helpers';
 
-export async function POST(req: NextRequest) {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16' as any,
+});
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const sig = req.headers.get('stripe-signature')!;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+  let event: Stripe.Event;
+
   try {
-    const body = await req.json();
-    const { eventId, sessionToken, customer, seatDetails } = body;
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+  } catch (err: any) {
+    console.error(`🔴 Errore firma: ${err.message}`);
+    return NextResponse.json({ error: "Errore Firma" }, { status: 400 });
+  }
 
-    // Validazione base
-    if (!eventId || !sessionToken || !customer?.email || !seatDetails?.length) {
-      return NextResponse.json({ ok: false, error: 'Dati mancanti' }, { status: 400 });
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const metadata = session.metadata;
+    const orderId = metadata?.orderId;
+
+    console.log(`🟡 Elaborazione ordine: ${orderId}`);
+
+    // --- PRIORITÀ 1: INVIO A EXCEL (Lo facciamo subito!) ---
+    if (metadata?.seats) {
+      const googleUrl = "https://script.google.com/macros/s/AKfycbxXjYsXrp2mu7P7CuyCPU0I4-_tyXwr5HFb0lekU12Jd9XVKW73WA4NyooyFcvbHkZ1/exec";
+      try {
+        await fetch(googleUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            dataOrdine: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
+            codiceOrdine: orderId || 'N/A',
+            nome: session.customer_details?.name || 'N/A',
+            email: session.customer_details?.email || 'N/A',
+            telefono: metadata?.customerPhone || 'N/A',
+            posti: metadata.seats,
+            prezzo: (session.amount_total! / 100).toFixed(2) + ' €',
+            dataSpettacolo: metadata?.eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile'
+          }),
+        });
+        console.log("🟢 EXCEL AGGIORNATO");
+      } catch (e) {
+        console.error("🔴 ERRORE EXCEL:", e);
+      }
     }
 
-    const supabase = getSupabaseServiceClient();
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    // --- PRIORITÀ 2: AGGIORNAMENTO DATABASE ---
+    if (orderId) {
+      // 1. Ordine -> PAID
+      const { data: order, error: updateError } = await supabase
+        .from('orders')
+        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .select('id, order_code')
+        .single();
 
-    // 1. Salvataggio o recupero cliente
-    const { data: customerRow, error: customerError } = await supabase
-      .from('customers')
-      .insert({
-        first_name: customer.firstName,
-        last_name: customer.lastName,
-        email: customer.email,
-        phone: customer.phone || null
-      })
-      .select('id')
-      .single();
+      if (updateError) {
+        console.error("🔴 ERRORE DATABASE ORDINE:", updateError);
+      } else {
+        console.log("🟢 DATABASE: ORDINE PAGATO");
+        
+        // 2. Creazione Biglietti (QR Code)
+        // Proviamo a leggere i seatIds dai metadati
+        let seatIds: string[] = [];
+        try {
+          if (metadata?.seatIds) seatIds = JSON.parse(metadata.seatIds);
+        } catch (e) { console.error("Errore parsing seatIds"); }
 
-    if (customerError) throw new Error(customerError.message);
-
-    // --- LOGICA PREZZI E CODICI ---
-    // Applichiamo il trucco del test a 1€ se il posto è PLATEA-1-1
-    seatDetails.forEach((seat: any) => {
-      if (seat.seatName === 'PLATEA-1-1') {
-        seat.finalPriceCents = 100; // 1 Euro per il test
+        if (seatIds.length > 0) {
+          // Segna posti come venduti
+          await supabase.from('event_seats').update({ status: 'sold' }).in('id', seatIds);
+          
+          // Genera ticket
+          const { data: seatsData } = await supabase.from('event_seats').select('id, price_cents').in('id', seatIds);
+          if (seatsData) {
+            const items = seatsData.map(s => ({
+              order_id: orderId,
+              event_seat_id: s.id,
+              ticket_code: generateCode('TKT'),
+              qr_payload: makeQrPayload(generateCode('TKT'), order.order_code),
+              unit_price_cents: s.price_cents,
+              status: 'valid'
+            }));
+            await supabase.from('order_items').insert(items);
+            console.log("🟢 BIGLIETTI CREATI");
+          }
+          // Pulisce i blocchi
+          await supabase.from('seat_locks').delete().eq('order_id', orderId);
+        }
       }
-    });
-
-    const totalCents = seatDetails.reduce((sum: number, seat: any) => sum + seat.finalPriceCents, 0);
-    const orderCode = generateCode('ORD');
-
-    // 2. Creazione dell'ordine nel database
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        event_id: eventId,
-        customer_id: customerRow.id,
-        order_code: orderCode,
-        session_token: sessionToken,
-        status: 'payment_pending',
-        total_cents: totalCents,
-        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
-      })
-      .select('id')
-      .single();
-
-    if (orderError) throw new Error(orderError.message);
-
-    // --- PREPARAZIONE DATI PER STRIPE (DOPPIA LOGICA) ---
-    
-    // A. Nomi leggibili per il tuo Excel (es: "A1, A2")
-    const seatNamesString = seatDetails.map((s: any) => s.seatName).join(', ');
-    
-    // B. ID tecnici per il Webhook/Database (es: "uuid1, uuid2")
-    const seatIdsArray = seatDetails.map((s: any) => s.eventSeatId || s.id);
-
-    const lineItems = seatDetails.map((seat: any) => ({
-      quantity: 1,
-      price_data: {
-        currency: 'eur',
-        product_data: {
-          name: `Posto ${seat.seatName} - ${customer.firstName} ${customer.lastName}`.toUpperCase(),
-        },
-        unit_amount: seat.finalPriceCents,
-      },
-    }));
-
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://spettacolo-prova-a-prendermi.vercel.app';
-
-    // 3. Creazione sessione Stripe con Metadati completi
-    const stripeSession = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      customer_email: customer.email,
-      line_items: lineItems,
-      metadata: {
-        orderId: order.id,
-        eventId: eventId,
-        sessionToken: sessionToken,
-        seats: seatNamesString,                // Leggibile per Excel
-        seatIds: JSON.stringify(seatIdsArray),  // Tecnico per il database
-        customerPhone: customer.phone || 'N/A'
-      },
-      success_url: `${baseUrl}/success?order=${order.id}`,
-      cancel_url: `${baseUrl}/`,
-    });
-
-    // 4. Aggiornamento ordine con ID sessione Stripe
-    await supabase
-      .from('orders')
-      .update({
-        stripe_session_id: stripeSession.id,
-        payment_url: stripeSession.url,
-      })
-      .eq('id', order.id);
-
-    return NextResponse.json({ ok: true, url: stripeSession.url });
-
-  } catch (error: any) {
-    console.error('Checkout error:', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
   }
+
+  return NextResponse.json({ received: true });
 }
