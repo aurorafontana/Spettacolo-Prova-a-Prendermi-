@@ -8,7 +8,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { eventId, sessionToken, customer, seatDetails } = body;
 
-    // 1. Validazione dati in ingresso
     if (!eventId || !sessionToken || !customer?.email || !seatDetails?.length) {
       return NextResponse.json({ ok: false, error: 'Dati mancanti' }, { status: 400 });
     }
@@ -16,7 +15,7 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseServiceClient();
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-    // 2. Salvataggio o recupero del cliente
+    // Salvataggio cliente
     const { data: customerRow, error: customerError } = await supabase
       .from('customers')
       .insert({
@@ -25,23 +24,19 @@ export async function POST(req: NextRequest) {
         email: customer.email,
         phone: customer.phone || null
       })
-      .select('id')
-      .single();
+      .select('id').single();
 
     if (customerError) throw new Error(customerError.message);
 
-    // --- LOGICA TEST 1 EURO ---
-    // Applichiamo il prezzo di test se viene selezionato il posto specifico
+    // Trucco Test 1 Euro
     seatDetails.forEach((seat: any) => {
-      if (seat.seatName === 'PLATEA-1-1') {
-        seat.finalPriceCents = 100; 
-      }
+      if (seat.seatName === 'PLATEA-1-1') seat.finalPriceCents = 100;
     });
 
     const totalCents = seatDetails.reduce((sum: number, seat: any) => sum + seat.finalPriceCents, 0);
     const orderCode = generateCode('ORD');
 
-    // 3. Creazione dell'ordine nel database
+    // Creazione Ordine
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -53,16 +48,12 @@ export async function POST(req: NextRequest) {
         total_cents: totalCents,
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
       })
-      .select('id')
-      .single();
+      .select('id').single();
 
     if (orderError) throw new Error(orderError.message);
 
-    // --- PREPARAZIONE METADATI DOPPI ---
-    // Nomi leggibili per Excel (es: "A1, A2")
+    // Logica Doppia: Nomi Excel + ID Database
     const seatNamesString = seatDetails.map((s: any) => s.seatName).join(', ');
-    
-    // ID tecnici per il Webhook e il database
     const seatIdsArray = seatDetails.map((s: any) => s.eventSeatId || s.id);
 
     const lineItems = seatDetails.map((seat: any) => ({
@@ -78,7 +69,14 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://spettacolo-prova-a-prendermi.vercel.app';
 
-    // 4. Creazione sessione Stripe con redirect dinamico e metadati completi
+    // --- IL TRADUTTORE DEI LINK ---
+    // Capisce quale evento è stato scelto e imposta il link corretto per il pulsante "Indietro"
+    let eventSlug = 'prova-a-prendermi'; // Default 4 Aprile
+    if (eventId !== '8676efe4-53b8-4952-828f-1f2dd60f1c9e') {
+      eventSlug = 'prova-a-prendermi-5-aprile'; // Se non è il 4, è il 5 Aprile
+    }
+
+    // Sessione Stripe
     const stripeSession = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: customer.email,
@@ -87,23 +85,20 @@ export async function POST(req: NextRequest) {
         orderId: order.id,
         eventId: eventId,
         sessionToken: sessionToken,
-        seats: seatNamesString,                // Usato dal Webhook per inviare dati a Excel
-        seatIds: JSON.stringify(seatIdsArray),  // Usato dal Webhook per creare biglietti nel DB
+        seats: seatNamesString,
+        seatIds: JSON.stringify(seatIdsArray),
         customerPhone: customer.phone || 'N/A'
       },
       success_url: `${baseUrl}/success?order=${order.id}`,
-      // Se l'utente annulla, lo riportiamo alla pagina dell'evento specifica
-      cancel_url: `${baseUrl}/events/${eventId}`,
+      
+      // ORA USA IL LINK TRADOTTO CORRETTAMENTE!
+      cancel_url: `${baseUrl}/events/${eventSlug}`,
     });
 
-    // 5. Aggiornamento ordine con i riferimenti di Stripe
-    await supabase
-      .from('orders')
-      .update({
+    await supabase.from('orders').update({
         stripe_session_id: stripeSession.id,
         payment_url: stripeSession.url,
-      })
-      .eq('id', order.id);
+      }).eq('id', order.id);
 
     return NextResponse.json({ ok: true, url: stripeSession.url });
 
