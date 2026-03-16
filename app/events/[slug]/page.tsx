@@ -2,7 +2,6 @@ import BookingClient from '@/components/BookingClient';
 import { notFound } from 'next/navigation';
 import { getSupabaseServiceClient } from '@/lib/supabaseServer';
 
-// Forza il ricalcolo della pagina ad ogni refresh
 export const revalidate = 0; 
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -17,7 +16,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     .eq('slug', slug)
     .single();
 
-  // --- 🧹 PULIZIA AUTOMATICA PROFONDA (LAZY CLEANUP) ---
+  // --- 🧹 PULIZIA AUTOMATICA (LAZY CLEANUP) CORRETTA ---
   if (eventForCleanup) {
     try {
       // FASE A: Gestione degli Ordini Scaduti ('payment_pending' -> 'expired')
@@ -38,13 +37,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         if (locks && locks.length > 0) {
           const seatIdsToFree = locks.map(l => l.event_seat_id);
 
-          // SICUREZZA AGGIUNTA: Ricolora di verde SOLO i posti che sono ancora 'booked'
-          // Non tocca assolutamente i posti 'sold'
+          // CORREZIONE: Ora cerca 'locked' invece di 'booked'
           await supabase
             .from('event_seats')
             .update({ status: 'available', lock_expires_at: null })
             .in('id', seatIdsToFree)
-            .eq('status', 'booked'); 
+            .eq('status', 'locked'); 
         }
 
         await supabase.from('seat_locks').delete().in('order_id', expiredOrderIds);
@@ -60,23 +58,23 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       if (orphanedLocks && orphanedLocks.length > 0) {
         const orphanedSeatIds = orphanedLocks.map(l => l.event_seat_id);
         
-        // SICUREZZA AGGIUNTA: Ricolora di verde SOLO se lo stato è 'booked'
+        // CORREZIONE: Ora cerca 'locked' invece di 'booked'
         await supabase
           .from('event_seats')
           .update({ status: 'available', lock_expires_at: null })
           .in('id', orphanedSeatIds)
-          .eq('status', 'booked');
+          .eq('status', 'locked');
           
         await supabase.from('seat_locks').delete().in('event_seat_id', orphanedSeatIds);
       }
 
       // FASE C: Pulizia classica
-      // Questa aveva già la sicurezza .eq('status', 'booked') integrata!
+      // CORREZIONE: Ora cerca 'locked' invece di 'booked'
       await supabase
         .from('event_seats')
         .update({ status: 'available', lock_expires_at: null })
         .eq('event_id', eventForCleanup.id)
-        .eq('status', 'booked')
+        .eq('status', 'locked')
         .lt('lock_expires_at', now);
 
     } catch (cleanupError) {
@@ -85,7 +83,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   }
   // --------------------------------------------------------
 
-  // Fetch dell'evento (Il tuo codice originale)
+  // Fetch dell'evento 
   const { data: event } = await supabase
     .from('events')
     .select('*')
