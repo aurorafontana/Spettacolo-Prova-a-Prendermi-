@@ -51,16 +51,35 @@ export async function POST(req: NextRequest) {
     const seatNamesString = seatDetails.map((s: any) => s.seatName).join(', ');
     const seatIdsArray = seatDetails.map((s: any) => s.eventSeatId || s.id);
 
-    const lineItems = seatDetails.map((seat: any) => ({
-      quantity: 1,
-      price_data: {
-        currency: 'eur',
-        product_data: {
-          name: `Posto ${seat.seatName} - ${customer.firstName} ${customer.lastName}`.toUpperCase(),
+    // --- MODIFICA SICURA: Solo la creazione del testo per Stripe ---
+    const lineItems = seatDetails.map((seat: any) => {
+      // 1. Calcolo Data Evento
+      const eventDate = eventId === '8676efe4-53b8-4952-828f-1f2dd60f1c9e' ? '4 Aprile' : '5 Aprile';
+      
+      // 2. Nome in maiuscolo
+      const customerName = `${customer.firstName} ${customer.lastName}`.toUpperCase();
+      
+      // 3. Tipo di biglietto
+      let ticketTypeStr = 'Biglietto Adulto';
+      if (seat.ticketType === 'ridotto') {
+        ticketTypeStr = 'Biglietto Ridotto';
+      } else if (seat.ticketType === 'stanza_privata') {
+        ticketTypeStr = 'Prenotazione Casetta';
+      }
+
+      return {
+        quantity: 1,
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            // Formato esatto richiesto: "Biglietto Adulto - Posto PLATEA-1-1 | 4 Aprile | ENRICO BERNARDINI"
+            name: `${ticketTypeStr} - Posto ${seat.seatName} | ${eventDate} | ${customerName}`,
+          },
+          unit_amount: seat.finalPriceCents,
         },
-        unit_amount: seat.finalPriceCents,
-      },
-    }));
+      };
+    });
+    // --- FINE MODIFICA ---
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://spettacolo-prova-a-prendermi.vercel.app';
 
